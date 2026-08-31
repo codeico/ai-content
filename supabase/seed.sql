@@ -1,0 +1,6 @@
+-- Supabase seed data.
+--
+-- Phase 0 intentionally defines no application tables; the schema in
+-- docs/DATABASE_SCHEMA.md is introduced by later phases, starting with
+-- `profiles` in Phase 1. This file exists so the seed step has a stable target
+-- and is applied automatically by `supabase db reset`.

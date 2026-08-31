@@ -1,0 +1,12 @@
+{
+  "name": "@ai-content/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./env": "./src/env/index.ts"
+  },
+  "dependencies": {
+    "zod": "4.5.4"
+  }
+}

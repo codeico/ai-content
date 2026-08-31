@@ -1,0 +1,14 @@
+{
+  "name": "@ai-content/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./src/client/index.ts"
+  },
+  "dependencies": {
+    "@ai-content/shared": "*",
+    "@supabase/ssr": "0.12.5",
+    "@supabase/supabase-js": "2.112.4"
+  }
+}
