@@ -8,6 +8,8 @@
 import { loadRuntimeEnv, loadServerEnv } from '@ai-content/shared/env';
 import { createClient } from '@supabase/supabase-js';
 
+import type { Database } from '../types/database.ts';
+
 /**
  * Raised when the admin client is constructed in a browser-like environment.
  *
@@ -51,7 +53,7 @@ export function createSupabaseAdminClient() {
   const { NEXT_PUBLIC_SUPABASE_URL: url } = loadRuntimeEnv();
   const { SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } = loadServerEnv();
 
-  return createClient(url, serviceRoleKey, {
+  return createClient<Database>(url, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

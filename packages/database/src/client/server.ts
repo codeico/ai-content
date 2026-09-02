@@ -11,6 +11,8 @@
 import { loadRuntimeEnv } from '@ai-content/shared/env';
 import { createServerClient } from '@supabase/ssr';
 
+import type { Database } from '../types/database.ts';
+
 /** A single cookie as read from, or written to, the request/response pair. */
 export interface CookieRecord {
   name: string;
@@ -37,12 +39,16 @@ export interface CookieAdapter {
 export function createSupabaseServerClient(cookies: CookieAdapter) {
   const env = loadRuntimeEnv();
 
-  return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll: () => cookies.getAll(),
-      setAll: (cookiesToSet) => {
-        cookies.setAll(cookiesToSet);
+  return createServerClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll: () => cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookies.setAll(cookiesToSet);
+        },
       },
     },
-  });
+  );
 }
