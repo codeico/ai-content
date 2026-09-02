@@ -6,7 +6,8 @@
   "exports": {
     "./env": "./src/env/index.ts",
     "./auth": "./src/auth/credentials.ts",
-    "./workspace": "./src/workspace/workspace.ts"
+    "./workspace": "./src/workspace/workspace.ts",
+    "./content": "./src/content/content.ts"
   },
   "dependencies": {
     "zod": "4.5.4"

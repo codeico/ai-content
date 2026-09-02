@@ -3,8 +3,11 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
 import { deleteWorkspace, updateWorkspace } from '@/app/app/workspace-actions';
+import { createContent } from '@/app/app/workspaces/[workspaceId]/content-actions';
+import { CreateContentForm } from '@/app/app/workspaces/[workspaceId]/create-content-form';
 import { DeleteWorkspaceButton } from '@/app/app/workspaces/[workspaceId]/delete-workspace-button';
 import { RenameWorkspaceForm } from '@/app/app/workspaces/[workspaceId]/rename-workspace-form';
+import { listContentForWorkspace } from '@/server/repositories/content-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
@@ -52,6 +55,8 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const canManage = workspace.role === 'owner';
   const boundUpdateWorkspace = updateWorkspace.bind(null, workspace.id);
   const boundDeleteWorkspace = deleteWorkspace.bind(null, workspace.id);
+  const boundCreateContent = createContent.bind(null, workspace.id);
+  const content = await listContentForWorkspace(supabase, workspace.id);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
@@ -71,6 +76,30 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
         <dt className="text-slate-400">Workspace ID</dt>
         <dd className="font-mono text-xs">{workspace.id}</dd>
       </dl>
+
+      <section className="flex flex-col gap-4 rounded-lg border border-slate-800 p-5">
+        <h2 className="text-sm font-medium text-slate-300">Content</h2>
+
+        {content.length === 0 ? (
+          <p className="text-sm text-slate-400">No content yet.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-slate-800">
+            {content.map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-4 py-3">
+                <Link
+                  href={`/app/workspaces/${workspace.id}/content/${item.id}`}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {item.title}
+                </Link>
+                <span className="text-xs text-slate-400 capitalize">{item.status}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <CreateContentForm action={boundCreateContent} />
+      </section>
 
       {canManage ? (
         <div className="flex flex-col gap-6 rounded-lg border border-slate-800 p-5">
