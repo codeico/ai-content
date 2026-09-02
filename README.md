@@ -13,18 +13,18 @@ caption generation, scheduling, and publishing are handled per workspace.
 
 ## Technology Stack
 
-| Concern        | Choice                                                      |
-| -------------- | ----------------------------------------------------------- |
-| Framework      | Next.js 16 (App Router)                                     |
-| Language       | TypeScript (strict)                                         |
-| UI             | React 19, Tailwind CSS v4                                   |
-| Database       | Supabase (PostgreSQL, Auth, Realtime)                       |
-| AI integration | OpenAI-compatible configurable AI Router (planned, Phase 4) |
-| Validation     | Zod                                                         |
-| Testing        | Vitest                                                      |
-| Tooling        | ESLint (flat config), Prettier                              |
-| Workspaces     | npm workspaces                                              |
-| Hosting        | Vercel                                                      |
+| Concern        | Choice                                                   |
+| -------------- | -------------------------------------------------------- |
+| Framework      | Next.js 16 (App Router)                                  |
+| Language       | TypeScript (strict)                                      |
+| UI             | React 19, Tailwind CSS v4                                |
+| Database       | Supabase (PostgreSQL, Auth, Realtime)                    |
+| AI integration | OpenAI-compatible configurable AI Router (`packages/ai`) |
+| Validation     | Zod                                                      |
+| Testing        | Vitest                                                   |
+| Tooling        | ESLint (flat config), Prettier                           |
+| Workspaces     | npm workspaces                                           |
+| Hosting        | Vercel                                                   |
 
 ## Repository Structure
 
@@ -71,7 +71,7 @@ Variables are split into three groups:
 | ------------------ | ----------------------------------------------------------- | ------------------------------------- |
 | Required runtime   | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase clients throw when used      |
 | Server-only secret | `SUPABASE_SERVICE_ROLE_KEY`                                 | Admin client throws when used         |
-| Future AI Router   | `AI_ROUTER_BASE_URL`, `AI_ROUTER_API_KEY`                   | Ignored until the phase that needs it |
+| AI Router (opt.)   | `AI_ROUTER_BASE_URL`, `AI_ROUTER_API_KEY`                   | `createAIProvider()` throws when used |
 
 Validation happens where a value is used, not at startup. `npm run dev` and
 `npm run build` therefore work before any Supabase project or AI Router exists —
@@ -91,9 +91,10 @@ The application targets the OpenAI API contract (for example
 point at a custom router, a self-hosted gateway, a local server, or a hosted
 provider without changing application code.
 
-No AI integration exists yet — there is no HTTP client, no SDK, and no model
-routing. Phase 4 implements the provider adapter behind an `AIProvider`
-abstraction; Phase 0 only establishes the configuration contract.
+The provider lives in `packages/ai` behind a provider-neutral `AIProvider`
+interface with one `OpenAICompatibleProvider` adapter. No application feature
+calls it yet. OpenRouter is **not** an architectural dependency — see
+[docs/AI_ARCHITECTURE.md](docs/AI_ARCHITECTURE.md).
 
 ## Development Commands
 

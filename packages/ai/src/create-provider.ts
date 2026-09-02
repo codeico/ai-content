@@ -1,0 +1,35 @@
+import { loadFutureProviderEnv, type EnvSource } from '@ai-content/shared/env';
+
+import { OpenAICompatibleProvider } from './openai-compatible-provider.ts';
+import { AIError, type AIProvider } from './provider.ts';
+
+/**
+ * Builds the application's AIProvider from server-only environment.
+ *
+ * Called lazily at the point of use, never at module load, so unrelated pages
+ * (login/workspace/content) still render with AI unconfigured. Same browser
+ * guard as createSupabaseAdminClient: defence in depth on top of the env
+ * variables having no NEXT_PUBLIC_ prefix.
+ */
+export function createAIProvider(source: EnvSource = process.env): AIProvider {
+  if (typeof (globalThis as { window?: unknown }).window !== 'undefined') {
+    throw new AIError(
+      'not_configured',
+      'The AI provider cannot be created in a browser environment; it is server-only.',
+    );
+  }
+
+  const { AI_ROUTER_BASE_URL: baseUrl, AI_ROUTER_API_KEY: apiKey } = loadFutureProviderEnv(source);
+
+  if (!baseUrl || !apiKey) {
+    const missing = [!baseUrl && 'AI_ROUTER_BASE_URL', !apiKey && 'AI_ROUTER_API_KEY'].filter(
+      Boolean,
+    );
+    throw new AIError(
+      'not_configured',
+      `AI Router is not configured: missing ${missing.join(', ')}.`,
+    );
+  }
+
+  return new OpenAICompatibleProvider({ baseUrl, apiKey });
+}
