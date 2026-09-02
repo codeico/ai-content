@@ -42,10 +42,6 @@ vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 
 vi.mock('next/cache', () => ({ refresh: mocks.refresh }));
 
-vi.mock('@/server/repositories/content-repository', () =>
-  vi.importActual('../apps/web/src/server/repositories/content-repository.ts'),
-);
-
 vi.mock('@/lib/supabase/server', () => ({
   createServerClient: mocks.createServerClient,
   getAuthenticatedUser: mocks.getAuthenticatedUser,

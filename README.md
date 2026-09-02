@@ -6,10 +6,10 @@ A PWA for managing several Instagram accounts — each with its own niche, conte
 strategy, and AI personality — from a single place. Content discovery, AI analysis,
 caption generation, scheduling, and publishing are handled per workspace.
 
-> **Project status: Phase 0 — Project Foundation.**
-> This repository currently contains the foundation only. The features described
-> in `docs/MASTER_PRODUCT_SPEC.md` are delivered by later phases; see
-> [Implemented vs Planned](#implemented-vs-planned).
+> **Project status: Phases 0–6 complete — authentication, workspaces, content
+> domain, AI router foundation, mobile-first frontend, and content source/media
+> foundation.** AI analysis, background jobs, scheduling, and publishing are
+> delivered by later phases; see [Implemented vs Planned](#implemented-vs-planned).
 
 ## Technology Stack
 
@@ -31,20 +31,21 @@ caption generation, scheduling, and publishing are handled per workspace.
 ```text
 ai-content/
 ├── apps/
-│   └── web/              Next.js application
+│   └── web/              Next.js application (App Router, Server Actions)
 ├── packages/
-│   ├── shared/           Environment validation
-│   └── database/         Supabase client factories
+│   ├── shared/           Environment validation, Zod schemas for each domain
+│   ├── database/         Supabase client factories and hand-maintained DB types
+│   └── ai/               Provider-neutral AIProvider + OpenAI-compatible adapter
 ├── docs/                 Specifications — the project's source of truth
 ├── supabase/
-│   ├── migrations/       Added from Phase 1 onward
+│   ├── migrations/       Schema, RLS policies, and constraints
 │   └── seed.sql
-└── tests/                Vitest suites for the workspace packages
+└── tests/                Vitest suites for the workspace packages and web app
 ```
 
-`packages/ai` and `packages/jobs` are named in the architecture but are not
-created yet. They are introduced by the phases that need them, so the repository
-does not carry empty directories or fake service implementations.
+`packages/jobs` is named in the architecture but is not created yet. It is
+introduced by the phase that needs it, so the repository does not carry empty
+directories or fake service implementations.
 
 ## Prerequisites
 
@@ -120,23 +121,30 @@ All of the above are expected to pass before a phase is considered complete.
 
 ## Implemented vs Planned
 
-**Implemented (Phase 0)**
+**Implemented (Phases 0–6)**
 
-- npm workspace structure
-- Next.js application shell with Tailwind
-- TypeScript strict mode
-- ESLint, Prettier, Vitest
-- Environment validation with runtime/server/future-provider separation
+- npm workspace structure, Next.js App Router shell, TypeScript strict mode
+- ESLint, Prettier, Vitest; environment validation with runtime/server/AI separation
 - Supabase browser, server, and admin client factories
+- Authentication (sign up, sign in, sign out, protected routes) with `profiles`
+- Multi-workspace model: `workspaces`, `workspace_members`, Row Level Security
+  via `workspace_ids_for_current_user()`
+- Content domain: `content` with status lifecycle, workspace-scoped repositories,
+  validated Server Actions
+- AI router foundation: `packages/ai` provider abstraction (not yet called by any
+  feature)
+- Mobile-first frontend for workspaces and content
+- Content source and media foundation: neutral `source_type`, `source_url`,
+  `external_id`, object-storage reference pair, and `media_status` lifecycle
 
 **Planned (later phases)**
 
-Authentication, workspaces, content domain, AI analysis and captions, background
-jobs, scheduling, Instagram publishing, PWA and push notifications, observability,
-and security hardening. The order is defined in `docs/IMPLEMENTATION_ROADMAP.md`.
+AI analysis and captions, background jobs, scheduling, content discovery, media
+processing, Instagram publishing, PWA and push notifications, observability, and
+security hardening. The order is defined in `docs/IMPLEMENTATION_ROADMAP.md`.
 
-No database tables exist yet. The schema in `docs/DATABASE_SCHEMA.md` is created
-by migrations starting in Phase 1.
+Database changes are made only through new files in `supabase/migrations/`;
+applied migrations are never edited.
 
 ## Documentation
 

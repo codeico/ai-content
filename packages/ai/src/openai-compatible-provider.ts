@@ -190,7 +190,7 @@ function httpError(response: Response): AIError {
 function retryDelayMs(error: AIError): number {
   const retryAfter = (error.cause as { retryAfter?: string } | undefined)?.retryAfter;
   const seconds = retryAfter ? Number(retryAfter) : NaN;
-  // ponytail: honours numeric Retry-After only, capped; HTTP-date form falls back to the default.
+  // Honours a numeric Retry-After only, capped; the HTTP-date form falls back to the default.
   return Number.isFinite(seconds) && seconds > 0
     ? Math.min(seconds * 1000, MAX_RETRY_AFTER_MS)
     : 500;

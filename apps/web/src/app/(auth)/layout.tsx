@@ -24,7 +24,10 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="px-5 pt-6 sm:px-8">
-        <Link href="/" className="font-semibold tracking-[-0.01em]">
+        <Link
+          href="/"
+          className="inline-flex min-h-11 items-center font-semibold tracking-[-0.01em]"
+        >
           AI Content
         </Link>
       </header>

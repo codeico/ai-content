@@ -41,7 +41,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <header className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur-sm">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
-          <Link href="/app" className="font-semibold tracking-[-0.01em]">
+          <Link
+            href="/app"
+            className="inline-flex min-h-11 items-center font-semibold tracking-[-0.01em]"
+          >
             AI Content
           </Link>
           <div className="hidden md:block">
