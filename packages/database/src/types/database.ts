@@ -11,24 +11,42 @@ export type Database = {
       content: {
         Row: {
           created_at: string;
+          external_id: string | null;
           id: string;
+          media_status: string;
+          source_type: string;
+          source_url: string | null;
           status: string;
+          storage_key: string | null;
+          storage_provider: string | null;
           title: string;
           updated_at: string;
           workspace_id: string;
         };
         Insert: {
           created_at?: string;
+          external_id?: string | null;
           id?: string;
+          media_status?: string;
+          source_type?: string;
+          source_url?: string | null;
           status?: string;
+          storage_key?: string | null;
+          storage_provider?: string | null;
           title: string;
           updated_at?: string;
           workspace_id: string;
         };
         Update: {
           created_at?: string;
+          external_id?: string | null;
           id?: string;
+          media_status?: string;
+          source_type?: string;
+          source_url?: string | null;
           status?: string;
+          storage_key?: string | null;
+          storage_provider?: string | null;
           title?: string;
           updated_at?: string;
           workspace_id?: string;

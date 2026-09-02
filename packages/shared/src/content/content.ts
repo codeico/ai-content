@@ -27,6 +27,78 @@ export const contentStatusSchema = z.enum(CONTENT_STATUSES, {
   error: 'Status must be draft, ready, or archived.',
 });
 
+/**
+ * Phase 6 provenance. Neutral labels only: no value implies an integration.
+ * Must match the CHECK in supabase/migrations/20260903100000_add_content_source_media.sql.
+ */
+export const CONTENT_SOURCE_TYPES = [
+  'tiktok',
+  'instagram',
+  'youtube',
+  'upload',
+  'url',
+  'other',
+] as const;
+
+export type ContentSourceType = (typeof CONTENT_SOURCE_TYPES)[number];
+
+/**
+ * Phase 6 media lifecycle, independent of `status`. Only `external_only` can
+ * be produced by the product today; `available` needs a storage phase and
+ * `missing` is an owner assertion. Must match the same migration's CHECK.
+ */
+export const MEDIA_STATUSES = ['external_only', 'available', 'missing'] as const;
+
+export type MediaStatus = (typeof MEDIA_STATUSES)[number];
+
+export const CONTENT_SOURCE_URL_MAX_LENGTH = 2048;
+export const CONTENT_EXTERNAL_ID_MAX_LENGTH = 200;
+
+export const contentSourceTypeSchema = z.enum(CONTENT_SOURCE_TYPES, {
+  error: 'Choose a source type.',
+});
+
+/**
+ * http(s) only. `z.url()` alone would accept `javascript:` and `data:`; the
+ * protocol allow-list is the XSS gate, and the migration repeats it in SQL.
+ * An empty string means "no link" and normalises to null.
+ */
+export const contentSourceUrlSchema = z
+  .string()
+  .trim()
+  .max(CONTENT_SOURCE_URL_MAX_LENGTH, 'Link is too long.')
+  .transform((value) => (value === '' ? null : value))
+  .pipe(
+    z
+      .url({ protocol: /^https?$/, error: 'Enter a full link starting with https://' })
+      // Canonical form: lowercases scheme and host so the SQL check
+      // (`^https?://`) and any future dedupe see one spelling per link.
+      .transform((value) => new URL(value).href)
+      .nullable(),
+  );
+
+export const contentExternalIdSchema = z
+  .string()
+  .trim()
+  .max(CONTENT_EXTERNAL_ID_MAX_LENGTH, 'Identifier is too long.')
+  .transform((value) => (value === '' ? null : value));
+
+/**
+ * What the owner may assert about media. Zod accepts every lifecycle value so
+ * a row that a storage phase has marked `available` can still have its link
+ * edited; the Server Action refuses any *transition into* `available`, and
+ * the database refuses `available` without a storage key regardless.
+ */
+export const mediaStatusSchema = z.enum(MEDIA_STATUSES, {
+  error: 'Availability must be external only, available, or missing.',
+});
+
+/** The subset an owner can choose in the UI; `available` is system-set. */
+export const OWNER_SETTABLE_MEDIA_STATUSES = [
+  'external_only',
+  'missing',
+] as const satisfies readonly MediaStatus[];
+
 /** Route/param ids are attacker-controlled; reject non-UUIDs before any query. */
 export const contentIdSchema = z.uuid();
 
@@ -39,41 +111,87 @@ export const updateContentSchema = z.object({
   status: contentStatusSchema,
 });
 
+/**
+ * Source and media assertions edited together in one form. Storage fields are
+ * absent on purpose: no code path may set storage_provider/storage_key in
+ * this phase, so they are not even representable as input.
+ */
+export const updateContentSourceSchema = z.object({
+  source_type: contentSourceTypeSchema,
+  source_url: contentSourceUrlSchema,
+  external_id: contentExternalIdSchema,
+  media_status: mediaStatusSchema,
+});
+
 export type CreateContentInput = z.infer<typeof createContentSchema>;
 export type UpdateContentInput = z.infer<typeof updateContentSchema>;
+export type UpdateContentSourceInput = z.infer<typeof updateContentSourceSchema>;
 
 export type ContentFieldErrors = Partial<Record<keyof UpdateContentInput, string>>;
+export type ContentSourceFieldErrors = Partial<Record<keyof UpdateContentSourceInput, string>>;
 
-type Validation<T> =
-  { success: true; data: T } | { success: false; fieldErrors: ContentFieldErrors };
+type Validation<T, E> = { success: true; data: T } | { success: false; fieldErrors: E };
 
-function toFieldErrors(issues: z.core.$ZodIssue[]): ContentFieldErrors {
-  const fieldErrors: ContentFieldErrors = {};
+/**
+ * First message per field, for the fields the schema actually has. Deriving
+ * the allow-list from the schema (rather than hard-coding names) means a new
+ * field cannot silently lose its error message.
+ */
+function toFieldErrors<K extends string>(
+  issues: z.core.$ZodIssue[],
+  fields: readonly K[],
+): Partial<Record<K, string>> {
+  const fieldErrors: Partial<Record<K, string>> = {};
 
   for (const issue of issues) {
     const field = issue.path[0];
 
-    // First message per field only.
-    if ((field === 'title' || field === 'status') && fieldErrors[field] === undefined) {
-      fieldErrors[field] = issue.message;
+    if (
+      typeof field === 'string' &&
+      (fields as readonly string[]).includes(field) &&
+      fieldErrors[field as K] === undefined
+    ) {
+      fieldErrors[field as K] = issue.message;
     }
   }
 
   return fieldErrors;
 }
 
-export function validateCreateContent(input: unknown): Validation<CreateContentInput> {
+const CONTENT_FIELDS = Object.keys(updateContentSchema.shape) as (keyof UpdateContentInput)[];
+const CONTENT_SOURCE_FIELDS = Object.keys(
+  updateContentSourceSchema.shape,
+) as (keyof UpdateContentSourceInput)[];
+
+export function validateCreateContent(
+  input: unknown,
+): Validation<CreateContentInput, ContentFieldErrors> {
   const result = createContentSchema.safeParse(input);
 
   return result.success
     ? { success: true, data: result.data }
-    : { success: false, fieldErrors: toFieldErrors(result.error.issues) };
+    : { success: false, fieldErrors: toFieldErrors(result.error.issues, CONTENT_FIELDS) };
 }
 
-export function validateUpdateContent(input: unknown): Validation<UpdateContentInput> {
+export function validateUpdateContent(
+  input: unknown,
+): Validation<UpdateContentInput, ContentFieldErrors> {
   const result = updateContentSchema.safeParse(input);
 
   return result.success
     ? { success: true, data: result.data }
-    : { success: false, fieldErrors: toFieldErrors(result.error.issues) };
+    : { success: false, fieldErrors: toFieldErrors(result.error.issues, CONTENT_FIELDS) };
+}
+
+export function validateUpdateContentSource(
+  input: unknown,
+): Validation<UpdateContentSourceInput, ContentSourceFieldErrors> {
+  const result = updateContentSourceSchema.safeParse(input);
+
+  return result.success
+    ? { success: true, data: result.data }
+    : {
+        success: false,
+        fieldErrors: toFieldErrors(result.error.issues, CONTENT_SOURCE_FIELDS),
+      };
 }

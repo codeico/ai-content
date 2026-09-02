@@ -88,7 +88,9 @@ workspace-scoped.
   `pb-24` so nothing hides under the tabs.
 - `md` and up: tabs move into the top bar, pages become a two-column grid
   (`minmax(0,1fr) 320px`): list on the left, create form / settings on the
-  right. Content max width 1024px.
+  right. Content max width 1024px. Exception: the content detail page keeps a
+  single column until `lg` (1024px) — at 768px its main column would be ~337px
+  and the Source form inputs overflowed.
 - `viewport-fit=cover` plus `env(safe-area-inset-*)` on `html` and the tab bar.
 - All interactive targets are at least 44px tall (measured at 360/390/414).
 

@@ -4,10 +4,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
-import { deleteContent, updateContent } from '@/app/app/workspaces/[workspaceId]/content-actions';
+import {
+  deleteContent,
+  updateContent,
+  updateContentSource,
+} from '@/app/app/workspaces/[workspaceId]/content-actions';
 import { DeleteContentButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/delete-content-button';
 import { EditContentForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-content-form';
-import { PageHeader, StatusMark } from '@/components/ui';
+import { EditSourceForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-source-form';
+import { MediaStatusMark, PageHeader, SOURCE_TYPE_LABEL, StatusMark } from '@/components/ui';
 import { getContentInWorkspace } from '@/server/repositories/content-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
@@ -20,15 +25,29 @@ interface ContentPageProps {
 export const metadata: Metadata = { title: 'Content' };
 
 /**
- * Future pipeline stages. Listed so the shape of the product is visible, but
+ * Later pipeline stages. Listed so the shape of the product is visible, but
  * each is plainly marked unavailable. None of them is wired to anything.
+ * Source left this list in Phase 6 when it became a real section.
  */
-const UPCOMING_STAGES = ['Source', 'Creative', 'Caption', 'Publish'] as const;
+const UPCOMING_STAGES = ['Creative', 'Caption', 'Publish'] as const;
 
 const dateFormat = new Intl.DateTimeFormat('en', {
   dateStyle: 'medium',
   timeStyle: 'short',
 });
+
+/**
+ * Short display form of a source link. The DB check only guarantees an
+ * https:// prefix, so a value written outside the app can still fail the URL
+ * parser; fall back to the raw string rather than 500 the page.
+ */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host || url;
+  } catch {
+    return url;
+  }
+}
 
 /**
  * Content detail. Authorization order mirrors the workspace page: validate
@@ -66,7 +85,13 @@ export default async function ContentPage({ params }: ContentPageProps) {
   }
 
   const boundUpdateContent = updateContent.bind(null, workspace.id, content.id);
+  const boundUpdateContentSource = updateContentSource.bind(null, workspace.id, content.id);
   const boundDeleteContent = deleteContent.bind(null, workspace.id, content.id);
+
+  // Everything the owner can see about provenance in one glance. A row with
+  // no value still renders, as "Not set", so the shape is stable and honest.
+  const hasSource = content.source_type !== 'other' || content.source_url !== null;
+  const sourceHost = content.source_url ? hostOf(content.source_url) : null;
 
   return (
     <div className="rise">
@@ -80,8 +105,8 @@ export default async function ContentPage({ params }: ContentPageProps) {
         meta={<StatusMark status={content.status} />}
       />
 
-      <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_320px] md:gap-12">
-        <div className="flex flex-col gap-10">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
+        <div className="flex min-w-0 flex-col gap-10">
           <section aria-labelledby="edit-heading" className="border-t border-line pt-5">
             <h2 id="edit-heading" className="mb-4 font-medium">
               Details
@@ -93,14 +118,34 @@ export default async function ContentPage({ params }: ContentPageProps) {
             />
           </section>
 
+          <section aria-labelledby="source-heading" className="border-t border-line pt-5">
+            <h2 id="source-heading" className="mb-1 font-medium">
+              Source
+            </h2>
+            <p className="mb-4 text-[14px] text-ink-soft">
+              {hasSource
+                ? 'Where this content comes from. Nothing is downloaded or fetched.'
+                : 'No source yet. Say where this content comes from; a link is optional.'}
+            </p>
+            <EditSourceForm
+              action={boundUpdateContentSource}
+              current={{
+                source_type: content.source_type,
+                source_url: content.source_url,
+                external_id: content.external_id,
+                media_status: content.media_status,
+              }}
+            />
+          </section>
+
           <section aria-labelledby="stages-heading" className="border-t border-line pt-5">
-            <h2 id="stages-heading" className="font-medium">
+            <h2 id="stages-heading" className="mb-1 font-medium">
               Pipeline
             </h2>
-            <p className="mt-1 text-[14px] text-ink-soft">
-              These stages arrive in later releases. Nothing here is active yet.
+            <p className="mb-4 text-[14px] text-ink-soft">
+              Later stages. Nothing here is active yet.
             </p>
-            <ol className="mt-4 grid grid-cols-2 gap-x-6 sm:grid-cols-4">
+            <ol className="grid grid-cols-3 gap-x-6">
               {UPCOMING_STAGES.map((stage) => (
                 <li key={stage} className="border-t border-dashed border-line-strong py-3">
                   <span className="block text-[15px] text-ink-faint">{stage}</span>
@@ -111,7 +156,56 @@ export default async function ContentPage({ params }: ContentPageProps) {
           </section>
         </div>
 
-        <aside className="flex flex-col gap-8">
+        <aside className="flex min-w-0 flex-col gap-8">
+          <dl className="border-t border-line pt-5 text-[14px]">
+            <div className="flex justify-between gap-4 py-1.5">
+              <dt className="text-ink-faint">Source</dt>
+              <dd className="text-right">{SOURCE_TYPE_LABEL[content.source_type]}</dd>
+            </div>
+            {/* The only tappable row: 44px tall, no py so it sits on the same
+                baseline rhythm as its neighbours. */}
+            <div className="flex min-h-11 items-center justify-between gap-4">
+              <dt className="shrink-0 text-ink-faint">Link</dt>
+              <dd className="flex min-w-0 justify-end text-right">
+                {content.source_url ? (
+                  <a
+                    href={content.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={content.source_url}
+                    className="inline-flex min-h-11 max-w-full items-center underline underline-offset-2 hover:text-ink"
+                  >
+                    <span className="truncate">{sourceHost}</span>
+                    <span className="sr-only"> (opens in new tab)</span>
+                  </a>
+                ) : (
+                  <span className="text-ink-faint">Not set</span>
+                )}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5">
+              <dt className="shrink-0 text-ink-faint">Platform ID</dt>
+              <dd className="min-w-0 text-right">
+                {content.external_id ? (
+                  <span
+                    className="block truncate font-mono text-[12px]"
+                    title={content.external_id}
+                  >
+                    {content.external_id}
+                  </span>
+                ) : (
+                  <span className="text-ink-faint">Not set</span>
+                )}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5">
+              <dt className="text-ink-faint">Media</dt>
+              <dd className="text-right">
+                <MediaStatusMark status={content.media_status} />
+              </dd>
+            </div>
+          </dl>
+
           <dl className="border-t border-line pt-5 text-[14px]">
             <div className="flex justify-between gap-4 py-1.5">
               <dt className="text-ink-faint">Created</dt>

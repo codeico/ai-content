@@ -1,4 +1,4 @@
-import type { ContentStatus } from '@ai-content/shared/content';
+import type { ContentSourceType, ContentStatus, MediaStatus } from '@ai-content/shared/content';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
@@ -119,19 +119,59 @@ export const STATUS_LABEL: Record<ContentStatus, string> = {
   archived: 'Archived',
 };
 
-const STATUS_CLASS: Record<ContentStatus, string> = {
-  draft: 'text-warn',
+export const SOURCE_TYPE_LABEL: Record<ContentSourceType, string> = {
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  upload: 'Upload',
+  url: 'Link',
+  other: 'Other',
+};
+
+export const MEDIA_STATUS_LABEL: Record<MediaStatus, string> = {
+  external_only: 'External only',
+  available: 'Available',
+  missing: 'Missing',
+};
+
+/**
+ * Colour is the only state signal, and each tone has one meaning across the
+ * product: accent = ready/available, warn = draft/pending, muted = archived
+ * or a neutral fact, danger = something that should exist and does not.
+ */
+export type StatusTone = 'ready' | 'pending' | 'muted' | 'neutral' | 'danger';
+
+const TONE_CLASS: Record<StatusTone, string> = {
   ready: 'text-accent',
-  archived: 'text-ink-faint',
+  pending: 'text-warn',
+  muted: 'text-ink-faint',
+  neutral: 'text-ink-soft',
+  danger: 'text-danger',
+};
+
+const STATUS_TONE: Record<ContentStatus, StatusTone> = {
+  draft: 'pending',
+  ready: 'ready',
+  archived: 'muted',
+};
+
+const MEDIA_STATUS_TONE: Record<MediaStatus, StatusTone> = {
+  external_only: 'neutral',
+  available: 'ready',
+  missing: 'danger',
 };
 
 /** Text-only status. Colour carries state; no badge chrome. */
 export function StatusMark({ status }: { status: ContentStatus }) {
-  return (
-    <span className={cx('text-[13px] font-medium', STATUS_CLASS[status])}>
-      {STATUS_LABEL[status]}
-    </span>
-  );
+  return <ToneMark tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</ToneMark>;
+}
+
+export function MediaStatusMark({ status }: { status: MediaStatus }) {
+  return <ToneMark tone={MEDIA_STATUS_TONE[status]}>{MEDIA_STATUS_LABEL[status]}</ToneMark>;
+}
+
+function ToneMark({ tone, children }: { tone: StatusTone; children: ReactNode }) {
+  return <span className={cx('text-[13px] font-medium', TONE_CLASS[tone])}>{children}</span>;
 }
 
 /* -------------------------------------------------------------- EmptyState */

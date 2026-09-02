@@ -1,4 +1,9 @@
-import type { ContentStatus } from '@ai-content/shared/content';
+import type {
+  ContentSourceType,
+  ContentStatus,
+  MediaStatus,
+  UpdateContentSourceInput,
+} from '@ai-content/shared/content';
 import type { Database, Tables } from '@ai-content/database/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -25,10 +30,19 @@ export class ContentRepositoryError extends Error {
   }
 }
 
-/** Generated types give `status: string`; narrow to the CHECK-constrained set. */
-export type Content = Omit<Tables<'content'>, 'status'> & { status: ContentStatus };
+/**
+ * Generated types give the CHECK-constrained columns as `string`; narrow them
+ * to the shared enums. storage_provider/storage_key are read here but never
+ * written by any function in this file: no storage phase exists yet.
+ */
+export type Content = Omit<Tables<'content'>, 'status' | 'source_type' | 'media_status'> & {
+  status: ContentStatus;
+  source_type: ContentSourceType;
+  media_status: MediaStatus;
+};
 
-const CONTENT_COLUMNS = 'id, workspace_id, title, status, created_at, updated_at';
+const CONTENT_COLUMNS =
+  'id, workspace_id, title, status, source_type, source_url, external_id, storage_provider, storage_key, media_status, created_at, updated_at';
 
 export async function listContentForWorkspace(
   supabase: ContentClient,
@@ -104,6 +118,33 @@ export async function updateContentInWorkspace(
 
   if (error) {
     throw new ContentRepositoryError('Unable to update content.', error);
+  }
+
+  return data as Content | null;
+}
+
+/**
+ * Source and media assertions. Same scoping as updateContentInWorkspace; the
+ * patch type is the validated Zod output, so storage_provider/storage_key can
+ * never be part of it — the database's `available requires storage_key`
+ * check is therefore unreachable from here by construction.
+ */
+export async function updateContentSourceInWorkspace(
+  supabase: ContentClient,
+  workspaceId: string,
+  contentId: string,
+  patch: UpdateContentSourceInput,
+): Promise<Content | null> {
+  const { data, error } = await supabase
+    .from('content')
+    .update(patch)
+    .eq('workspace_id', workspaceId)
+    .eq('id', contentId)
+    .select(CONTENT_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    throw new ContentRepositoryError('Unable to update content source.', error);
   }
 
   return data as Content | null;

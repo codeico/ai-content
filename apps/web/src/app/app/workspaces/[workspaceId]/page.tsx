@@ -8,7 +8,13 @@ import { createContent } from '@/app/app/workspaces/[workspaceId]/content-action
 import { CreateContentForm } from '@/app/app/workspaces/[workspaceId]/create-content-form';
 import { DeleteWorkspaceButton } from '@/app/app/workspaces/[workspaceId]/delete-workspace-button';
 import { RenameWorkspaceForm } from '@/app/app/workspaces/[workspaceId]/rename-workspace-form';
-import { EmptyState, PageHeader, STATUS_LABEL, StatusMark } from '@/components/ui';
+import {
+  EmptyState,
+  PageHeader,
+  SOURCE_TYPE_LABEL,
+  STATUS_LABEL,
+  StatusMark,
+} from '@/components/ui';
 import { listContentForWorkspace } from '@/server/repositories/content-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
@@ -106,7 +112,14 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
                     href={`/app/workspaces/${workspace.id}/content/${item.id}`}
                     className="press -mx-2 flex min-h-14 items-center justify-between gap-4 rounded-control px-2 py-3 hover:bg-line/40"
                   >
-                    <span className="min-w-0 truncate text-[16px] font-medium">{item.title}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[16px] font-medium">{item.title}</span>
+                      {item.source_type !== 'other' ? (
+                        <span className="block text-[13px] text-ink-faint">
+                          {SOURCE_TYPE_LABEL[item.source_type]}
+                        </span>
+                      ) : null}
+                    </span>
                     <StatusMark status={item.status} />
                   </Link>
                 </li>

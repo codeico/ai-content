@@ -511,6 +511,18 @@ Setiap candidate content harus memiliki satu record.
 | created_at           | TIMESTAMPTZ | Creation                   |
 | updated_at           | TIMESTAMPTZ | Update                     |
 
+> **Implemented naming (Phase 6, decided 2026-09-03 — do not "fix" back toward this table).**
+> `public.content` uses `source_type` (not `platform`) and `external_id` (not
+> `external_content_id`). `platform` was rejected because the column is a
+> neutral owner-set label and must not imply an integration; `external_id` is
+> the shorter, conventional name. `sources.source_type` (§10) is a different
+> enum on a different table — the same column name on two tables is ordinary
+> SQL, not a conflict, and no rename is planned. Live checks on these columns
+> (http(s)-only `source_url`, non-blank `external_id`, length caps 2048/200,
+> storage pair set-together-or-null and non-blank) are in
+> `supabase/migrations/20260903100000_*` and `20260903110000_*`; those files
+> are the source of truth over this table where they differ.
+
 ---
 
 # 12. Content Status State Machine
@@ -640,6 +652,17 @@ DELETED
 ```
 
 Media lifecycle harus terpisah dari content workflow state.
+
+> **Implemented subset (Phase 6, decided 2026-09-03).** The live `media_status`
+> column stores lowercase values and only the three states the product can
+> honestly produce today: `external_only` (default; storage pair must be null),
+> `available` (storage pair must be set), `missing` (pair may be kept or
+> cleared). Lowercase matches the existing `status` column convention
+> (`draft`/`ready`/`archived`), so the uppercase spelling above is
+> documentation style, not a target. TEMPORARY, PROCESSING and DELETED are
+> not modelled: nothing can put a row into those states until a storage or
+> job phase exists. Each is a future `check` widening in a new migration,
+> never a rewrite of the applied ones.
 
 ---
 
