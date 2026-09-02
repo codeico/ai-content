@@ -1,11 +1,13 @@
 import { contentIdSchema } from '@ai-content/shared/content';
 import { workspaceIdSchema } from '@ai-content/shared/workspace';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
 import { deleteContent, updateContent } from '@/app/app/workspaces/[workspaceId]/content-actions';
 import { DeleteContentButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/delete-content-button';
 import { EditContentForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-content-form';
+import { PageHeader, StatusMark } from '@/components/ui';
 import { getContentInWorkspace } from '@/server/repositories/content-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
@@ -14,6 +16,19 @@ import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server'
 interface ContentPageProps {
   params: Promise<{ workspaceId: string; contentId: string }>;
 }
+
+export const metadata: Metadata = { title: 'Content' };
+
+/**
+ * Future pipeline stages. Listed so the shape of the product is visible, but
+ * each is plainly marked unavailable. None of them is wired to anything.
+ */
+const UPCOMING_STAGES = ['Source', 'Creative', 'Caption', 'Publish'] as const;
+
+const dateFormat = new Intl.DateTimeFormat('en', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
 
 /**
  * Content detail. Authorization order mirrors the workspace page: validate
@@ -54,43 +69,73 @@ export default async function ContentPage({ params }: ContentPageProps) {
   const boundDeleteContent = deleteContent.bind(null, workspace.id, content.id);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <Link
-        href={`/app/workspaces/${workspace.id}`}
-        className="text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200"
-      >
-        ← {workspace.name}
-      </Link>
+    <div className="rise">
+      <PageHeader
+        eyebrow={
+          <Link href={`/app/workspaces/${workspace.id}`} className="hover:text-ink">
+            {workspace.name}
+          </Link>
+        }
+        title={content.title}
+        meta={<StatusMark status={content.status} />}
+      />
 
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">{content.title}</h1>
-        <p className="text-sm text-slate-400 capitalize">Status: {content.status}</p>
-      </div>
+      <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_320px] md:gap-12">
+        <div className="flex flex-col gap-10">
+          <section aria-labelledby="edit-heading" className="border-t border-line pt-5">
+            <h2 id="edit-heading" className="mb-4 font-medium">
+              Details
+            </h2>
+            <EditContentForm
+              action={boundUpdateContent}
+              currentTitle={content.title}
+              currentStatus={content.status}
+            />
+          </section>
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/50 p-5 text-sm">
-        <dt className="text-slate-400">Created</dt>
-        <dd>{new Date(content.created_at).toLocaleString()}</dd>
-        <dt className="text-slate-400">Updated</dt>
-        <dd>{new Date(content.updated_at).toLocaleString()}</dd>
-        <dt className="text-slate-400">Content ID</dt>
-        <dd className="font-mono text-xs">{content.id}</dd>
-      </dl>
-
-      <div className="flex flex-col gap-6 rounded-lg border border-slate-800 p-5">
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-slate-300">Edit content</h2>
-          <EditContentForm
-            action={boundUpdateContent}
-            currentTitle={content.title}
-            currentStatus={content.status}
-          />
+          <section aria-labelledby="stages-heading" className="border-t border-line pt-5">
+            <h2 id="stages-heading" className="font-medium">
+              Pipeline
+            </h2>
+            <p className="mt-1 text-[14px] text-ink-soft">
+              These stages arrive in later releases. Nothing here is active yet.
+            </p>
+            <ol className="mt-4 grid grid-cols-2 gap-x-6 sm:grid-cols-4">
+              {UPCOMING_STAGES.map((stage) => (
+                <li key={stage} className="border-t border-dashed border-line-strong py-3">
+                  <span className="block text-[15px] text-ink-faint">{stage}</span>
+                  <span className="block text-[12px] text-ink-faint">Not available yet</span>
+                </li>
+              ))}
+            </ol>
+          </section>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-800 pt-6">
-          <h2 className="text-sm font-medium text-slate-300">Danger zone</h2>
-          <DeleteContentButton action={boundDeleteContent} title={content.title} />
-        </div>
+        <aside className="flex flex-col gap-8">
+          <dl className="border-t border-line pt-5 text-[14px]">
+            <div className="flex justify-between gap-4 py-1.5">
+              <dt className="text-ink-faint">Created</dt>
+              <dd className="tabular text-right">
+                {dateFormat.format(new Date(content.created_at))}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5">
+              <dt className="text-ink-faint">Updated</dt>
+              <dd className="tabular text-right">
+                {dateFormat.format(new Date(content.updated_at))}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5">
+              <dt className="text-ink-faint">ID</dt>
+              <dd className="font-mono text-[12px] break-all">{content.id}</dd>
+            </div>
+          </dl>
+
+          <div className="border-t border-line pt-5">
+            <DeleteContentButton action={boundDeleteContent} title={content.title} />
+          </div>
+        </aside>
       </div>
-    </main>
+    </div>
   );
 }

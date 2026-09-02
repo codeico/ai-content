@@ -5,6 +5,7 @@ import {
   validateUpdateContent,
   type ContentFieldErrors,
 } from '@ai-content/shared/content';
+import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import {
@@ -113,6 +114,9 @@ export async function updateContent(
   if (!updated) {
     return { error: 'Content not found.' };
   }
+
+  // Re-render the current route so the header/list reflect the new values.
+  refresh();
 
   return {};
 }

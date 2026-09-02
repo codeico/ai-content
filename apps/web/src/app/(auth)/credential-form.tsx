@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useActionState } from 'react';
 
 import type { AuthFormState } from '@/app/(auth)/actions';
+import { Button, Field, Input, Notice } from '@/components/ui';
 
 /**
  * Shared credential form for login and signup.
@@ -15,6 +16,7 @@ import type { AuthFormState } from '@/app/(auth)/actions';
 interface CredentialFormProps {
   action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
   title: string;
+  lede: string;
   submitLabel: string;
   pendingLabel: string;
   /** Signup needs a "new password" hint; login must not show password rules. */
@@ -25,6 +27,7 @@ interface CredentialFormProps {
 export function CredentialForm({
   action,
   title,
+  lede,
   submitLabel,
   pendingLabel,
   passwordHint,
@@ -33,93 +36,64 @@ export function CredentialForm({
   const [state, formAction, isPending] = useActionState(action, {});
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-6 px-6 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+    <div className="rise flex flex-col gap-8">
+      <div>
+        <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.01em]">{title}</h1>
+        <p className="mt-2 text-[15px] text-ink-soft">{lede}</p>
+      </div>
 
-      <form action={formAction} className="flex flex-col gap-4" noValidate>
-        {/* role="alert" so a screen reader announces the failure without a focus change. */}
-        {state.error ? (
-          <p role="alert" className="rounded-md bg-red-950 px-3 py-2 text-sm text-red-200">
-            {state.error}
-          </p>
-        ) : null}
+      <form action={formAction} className="flex flex-col gap-5" noValidate>
+        {state.error ? <Notice tone="error">{state.error}</Notice> : null}
+        {state.notice ? <Notice tone="success">{state.notice}</Notice> : null}
 
-        {state.notice ? (
-          <p role="status" className="rounded-md bg-emerald-950 px-3 py-2 text-sm text-emerald-200">
-            {state.notice}
-          </p>
-        ) : null}
+        <Field id="email" label="Email" error={state.fieldErrors?.email}>
+          {(a11y) => (
+            <Input
+              {...a11y}
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="next"
+              required
+            />
+          )}
+        </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            aria-describedby={state.fieldErrors?.email ? 'email-error' : undefined}
-            aria-invalid={state.fieldErrors?.email ? true : undefined}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-base outline-none focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-400"
-          />
-          {state.fieldErrors?.email ? (
-            <p id="email-error" className="text-sm text-red-300">
-              {state.fieldErrors.email}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            // "new-password" tells a password manager to offer generation on
-            // signup; "current-password" tells it to autofill on login.
-            autoComplete={passwordHint ? 'new-password' : 'current-password'}
-            required
-            minLength={passwordHint ? PASSWORD_MIN_LENGTH : undefined}
-            aria-describedby={
-              state.fieldErrors?.password
-                ? 'password-error'
-                : passwordHint
-                  ? 'password-hint'
-                  : undefined
-            }
-            aria-invalid={state.fieldErrors?.password ? true : undefined}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-base outline-none focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-400"
-          />
-          {state.fieldErrors?.password ? (
-            <p id="password-error" className="text-sm text-red-300">
-              {state.fieldErrors.password}
-            </p>
-          ) : passwordHint ? (
-            <p id="password-hint" className="text-sm text-slate-400">
-              {passwordHint}
-            </p>
-          ) : null}
-        </div>
-
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-950 disabled:opacity-60"
+        <Field
+          id="password"
+          label="Password"
+          error={state.fieldErrors?.password}
+          hint={passwordHint}
         >
+          {(a11y) => (
+            <Input
+              {...a11y}
+              name="password"
+              type="password"
+              // "new-password" tells a password manager to offer generation on
+              // signup; "current-password" tells it to autofill on login.
+              autoComplete={passwordHint ? 'new-password' : 'current-password'}
+              minLength={passwordHint ? PASSWORD_MIN_LENGTH : undefined}
+              enterKeyHint="go"
+              required
+            />
+          )}
+        </Field>
+
+        <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? pendingLabel : submitLabel}
-        </button>
+        </Button>
       </form>
 
-      <p className="text-sm text-slate-400">
+      <p className="text-[14px] text-ink-soft">
         {footer.prompt}{' '}
-        <Link href={footer.href} className="underline underline-offset-4 hover:text-slate-200">
+        <Link href={footer.href} className="font-medium text-ink underline underline-offset-4">
           {footer.linkLabel}
         </Link>
       </p>
-    </main>
+    </div>
   );
 }

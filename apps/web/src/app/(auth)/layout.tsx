@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { getAuthenticatedUser } from '@/lib/supabase/server';
@@ -20,5 +21,16 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
     redirect('/app');
   }
 
-  return children;
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="px-5 pt-6 sm:px-8">
+        <Link href="/" className="font-semibold tracking-[-0.01em]">
+          AI Content
+        </Link>
+      </header>
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-5 py-10 sm:px-0">
+        {children}
+      </main>
+    </div>
+  );
 }

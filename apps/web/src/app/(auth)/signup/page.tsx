@@ -5,7 +5,7 @@ import { signUp } from '@/app/(auth)/actions';
 import { CredentialForm } from '@/app/(auth)/credential-form';
 
 export const metadata: Metadata = {
-  title: 'Create account — AI Content',
+  title: 'Create account',
 };
 
 export default function SignupPage() {
@@ -13,6 +13,7 @@ export default function SignupPage() {
     <CredentialForm
       action={signUp}
       title="Create account"
+      lede="One account, as many niche workspaces as you need."
       submitLabel="Create account"
       pendingLabel="Creating account…"
       passwordHint={`At least ${PASSWORD_MIN_LENGTH} characters.`}

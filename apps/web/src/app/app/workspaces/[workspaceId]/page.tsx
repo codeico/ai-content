@@ -1,4 +1,5 @@
 import { workspaceIdSchema } from '@ai-content/shared/workspace';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
@@ -7,6 +8,7 @@ import { createContent } from '@/app/app/workspaces/[workspaceId]/content-action
 import { CreateContentForm } from '@/app/app/workspaces/[workspaceId]/create-content-form';
 import { DeleteWorkspaceButton } from '@/app/app/workspaces/[workspaceId]/delete-workspace-button';
 import { RenameWorkspaceForm } from '@/app/app/workspaces/[workspaceId]/rename-workspace-form';
+import { EmptyState, PageHeader, STATUS_LABEL, StatusMark } from '@/components/ui';
 import { listContentForWorkspace } from '@/server/repositories/content-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
@@ -16,18 +18,18 @@ interface WorkspacePageProps {
   params: Promise<{ workspaceId: string }>;
 }
 
+export const metadata: Metadata = { title: 'Workspace' };
+
 /**
- * Workspace detail.
- *
- * Not a dashboard — see docs/PHASE_2_PROMPT.md §18. It exists to prove
- * workspace context, authorization, and workspace-scoped routing work.
+ * Workspace overview: the content list is the page. Status counts are derived
+ * from the same rows (real data, nothing fabricated). Owner settings sit at the
+ * bottom, out of the way of the daily task.
  */
 export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const { workspaceId } = await params;
 
   // A route param is untrusted input. A malformed id (not a UUID) cannot be a
-  // real workspace, so reject it before it ever reaches a database query
-  // rather than letting Postgres return a generic invalid-input-syntax error.
+  // real workspace, so reject it before it ever reaches a database query.
   const idResult = workspaceIdSchema.safeParse(workspaceId);
 
   if (!idResult.success) {
@@ -43,81 +45,94 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const supabase = await createServerClient();
   const workspace = await getWorkspaceForUser(supabase, idResult.data, user.id);
 
-  // getWorkspaceForUser returns null both when the workspace does not exist
-  // and when the caller is not a member — see the repository's doc comment
-  // for why that ambiguity is intentional. Either way, the correct response
-  // to a route param naming a workspace this user cannot see is a 404, not a
-  // 403 that would confirm the workspace exists (docs/PHASE_2_PROMPT.md §17).
+  // null for both "missing" and "not a member": a 404 never confirms existence.
   if (!workspace) {
     notFound();
   }
+
+  const content = await listContentForWorkspace(supabase, workspace.id);
+  const counts = { draft: 0, ready: 0, archived: 0 };
+  for (const item of content) counts[item.status]++;
 
   const canManage = workspace.role === 'owner';
   const boundUpdateWorkspace = updateWorkspace.bind(null, workspace.id);
   const boundDeleteWorkspace = deleteWorkspace.bind(null, workspace.id);
   const boundCreateContent = createContent.bind(null, workspace.id);
-  const content = await listContentForWorkspace(supabase, workspace.id);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <Link
-        href="/app"
-        className="text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200"
-      >
-        ← All workspaces
-      </Link>
+    <div className="rise">
+      <PageHeader
+        eyebrow={
+          <Link href="/app" className="hover:text-ink">
+            Workspaces
+          </Link>
+        }
+        title={workspace.name}
+        meta={
+          content.length === 0 ? (
+            'No content yet'
+          ) : (
+            <span className="tabular">
+              {content.length} item{content.length === 1 ? '' : 's'}
+              {(['draft', 'ready', 'archived'] as const)
+                .filter((s) => counts[s] > 0)
+                .map((s) => (
+                  <span key={s}>
+                    <span aria-hidden> / </span>
+                    {counts[s]} {STATUS_LABEL[s].toLowerCase()}
+                  </span>
+                ))}
+            </span>
+          )
+        }
+      />
 
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">{workspace.name}</h1>
-        <p className="text-sm text-slate-400 capitalize">Your role: {workspace.role}</p>
+      <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_320px] md:gap-12">
+        <section aria-labelledby="content-heading">
+          <h2 id="content-heading" className="sr-only">
+            Content
+          </h2>
+
+          {content.length === 0 ? (
+            <EmptyState
+              title="Nothing here yet"
+              body="Add a title for the first piece of content. Everything starts as a draft."
+            />
+          ) : (
+            <ul className="border-t border-line">
+              {content.map((item) => (
+                <li key={item.id} className="border-b border-line">
+                  <Link
+                    href={`/app/workspaces/${workspace.id}/content/${item.id}`}
+                    className="press -mx-2 flex min-h-14 items-center justify-between gap-4 rounded-control px-2 py-3 hover:bg-line/40"
+                  >
+                    <span className="min-w-0 truncate text-[16px] font-medium">{item.title}</span>
+                    <StatusMark status={item.status} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <aside className="flex flex-col gap-10">
+          <CreateContentForm action={boundCreateContent} />
+
+          {canManage ? (
+            <section aria-labelledby="settings-heading" className="flex flex-col gap-5">
+              <h2 id="settings-heading" className="border-t border-line pt-5 font-medium">
+                Workspace settings
+              </h2>
+              <RenameWorkspaceForm action={boundUpdateWorkspace} currentName={workspace.name} />
+              <DeleteWorkspaceButton action={boundDeleteWorkspace} workspaceName={workspace.name} />
+            </section>
+          ) : (
+            <p className="border-t border-line pt-5 text-[14px] text-ink-soft">
+              You are a member. Only the owner can rename or delete this workspace.
+            </p>
+          )}
+        </aside>
       </div>
-
-      <dl className="flex items-center justify-between gap-4 rounded-lg border border-slate-800 bg-slate-900/50 p-5 text-sm">
-        <dt className="text-slate-400">Workspace ID</dt>
-        <dd className="font-mono text-xs">{workspace.id}</dd>
-      </dl>
-
-      <section className="flex flex-col gap-4 rounded-lg border border-slate-800 p-5">
-        <h2 className="text-sm font-medium text-slate-300">Content</h2>
-
-        {content.length === 0 ? (
-          <p className="text-sm text-slate-400">No content yet.</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-slate-800">
-            {content.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-4 py-3">
-                <Link
-                  href={`/app/workspaces/${workspace.id}/content/${item.id}`}
-                  className="font-medium underline-offset-4 hover:underline"
-                >
-                  {item.title}
-                </Link>
-                <span className="text-xs text-slate-400 capitalize">{item.status}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <CreateContentForm action={boundCreateContent} />
-      </section>
-
-      {canManage ? (
-        <div className="flex flex-col gap-6 rounded-lg border border-slate-800 p-5">
-          <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-slate-300">Rename workspace</h2>
-            <RenameWorkspaceForm action={boundUpdateWorkspace} currentName={workspace.name} />
-          </div>
-
-          <div className="flex flex-col gap-3 border-t border-slate-800 pt-6">
-            <h2 className="text-sm font-medium text-slate-300">Danger zone</h2>
-            <DeleteWorkspaceButton action={boundDeleteWorkspace} workspaceName={workspace.name} />
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-slate-400">
-          Only the workspace owner can rename or delete this workspace.
-        </p>
-      )}
-    </main>
+    </div>
   );
 }

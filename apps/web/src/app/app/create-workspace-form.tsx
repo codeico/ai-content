@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 
 import type { WorkspaceFormState } from '@/app/app/workspace-actions';
 import { createWorkspace } from '@/app/app/workspace-actions';
+import { Button, Field, Input, Notice } from '@/components/ui';
 
 /**
  * Create-workspace form.
@@ -18,48 +19,32 @@ export function CreateWorkspaceForm() {
   );
 
   return (
-    <form
-      action={formAction}
-      className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-5"
-    >
-      <h2 className="text-sm font-medium text-slate-300">Create a workspace</h2>
+    <form action={formAction} className="flex flex-col gap-4 border-t border-line pt-5">
+      <h2 className="font-medium">New workspace</h2>
 
-      {state.error ? (
-        <p role="alert" className="text-sm text-red-300">
-          {state.error}
-        </p>
-      ) : null}
+      {state.error ? <Notice tone="error">{state.error}</Notice> : null}
 
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-2">
-        <div className="flex flex-1 flex-col gap-1.5">
-          <label htmlFor="workspace-name" className="sr-only">
-            Workspace name
-          </label>
-          <input
-            id="workspace-name"
+      <Field
+        id="workspace-name"
+        label="Name"
+        hint="A niche or brand, for example Trading or Coding."
+        error={state.fieldErrors?.name}
+      >
+        {(a11y) => (
+          <Input
+            {...a11y}
             name="name"
             type="text"
-            placeholder="Workspace name"
             required
-            aria-describedby={state.fieldErrors?.name ? 'workspace-name-error' : undefined}
-            aria-invalid={state.fieldErrors?.name ? true : undefined}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-base outline-none focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-400"
+            autoComplete="off"
+            enterKeyHint="done"
           />
-          {state.fieldErrors?.name ? (
-            <p id="workspace-name-error" className="text-sm text-red-300">
-              {state.fieldErrors.name}
-            </p>
-          ) : null}
-        </div>
+        )}
+      </Field>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-slate-100 px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-950 disabled:opacity-60"
-        >
-          {isPending ? 'Creating…' : 'Create workspace'}
-        </button>
-      </div>
+      <Button type="submit" disabled={isPending} className="w-full">
+        {isPending ? 'Creating…' : 'Create workspace'}
+      </Button>
     </form>
   );
 }

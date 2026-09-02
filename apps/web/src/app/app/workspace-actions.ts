@@ -1,6 +1,7 @@
 'use server';
 
 import { validateWorkspaceName, type WorkspaceFieldErrors } from '@ai-content/shared/workspace';
+import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import {
@@ -119,6 +120,9 @@ export async function updateWorkspace(
   if (!renamed) {
     return { error: 'You do not have access to this workspace.' };
   }
+
+  // Re-render the current route so the header/list reflect the new values.
+  refresh();
 
   return {};
 }

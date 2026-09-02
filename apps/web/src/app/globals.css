@@ -1,1 +1,117 @@
 @import 'tailwindcss';
+
+/*
+ * Design tokens. One palette (warm stone), one accent (deep green, also the
+ * semantic "ready" colour), one radius scale (8px soft; 6px on controls).
+ * Values are tuned by hand, not pulled from a preset, so that the product does
+ * not look like the default of any component library.
+ */
+@theme {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-paper: #f6f5f2;
+  --color-surface: #fdfcfa;
+  --color-ink: #1c1b18;
+  --color-ink-soft: #55534d;
+  --color-ink-faint: #6f6c65;
+  --color-line: #e4e1da;
+  --color-line-strong: #c9c5bb;
+
+  --color-accent: #2f6b4f;
+  --color-accent-strong: #275a42;
+  --color-accent-soft: #e6efe9;
+
+  --color-warn: #8a5a12;
+  --color-warn-soft: #f6ecd8;
+  --color-danger: #9a3a2e;
+  --color-danger-soft: #f7e6e2;
+
+  --radius-control: 6px;
+  --radius-surface: 8px;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    background: var(--color-paper);
+    font-family: var(--font-sans);
+    /* Safe-area on notched phones; the bottom value feeds the tab bar. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+
+  body {
+    min-height: 100dvh;
+    color: var(--color-ink);
+    background: var(--color-paper);
+    font-feature-settings: 'cv11', 'ss01';
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Visible focus for keyboard users; the accent is the only focus colour. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline-width: 2px;
+    outline-style: solid;
+    outline-color: var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  /* Tabular figures wherever numbers sit in columns. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .press:active {
+    transform: translateY(1px);
+  }
+
+  /* Entry motion is opt-in and collapses under reduced-motion. */
+  .rise {
+    animation: rise 320ms var(--ease-out-quart) both;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise {
+      animation: none;
+    }
+    .press:active {
+      transform: none;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
