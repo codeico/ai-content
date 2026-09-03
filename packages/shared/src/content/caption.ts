@@ -36,6 +36,15 @@ export const CAPTION_BODY_MAX_LENGTH = 4000;
  * Not a rate limit. A real one needs shared state this app does not have yet
  * (Redis is queue-only today); this bounds total spend per content item, not
  * the rate of it.
+ *
+ * Scope, stated plainly: this is an APPLICATION bound, checked in
+ * generateCaption/editCaption. The captions INSERT policy
+ * (20260903130000) checks workspace membership only, so a member using the
+ * anon key directly can still insert past it. That costs them nothing and
+ * spends none of our model budget — the paid call happens in the action the
+ * cap guards — so the bound does what it was added for. Enforcing a count in
+ * the database would need a trigger counting siblings on every insert; worth
+ * doing when a row's existence (not its generation) starts costing something.
  */
 export const CAPTION_MAX_VERSIONS = 20;
 

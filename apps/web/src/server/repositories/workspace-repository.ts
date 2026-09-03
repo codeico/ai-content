@@ -2,6 +2,17 @@ import type { Database, Tables } from '@ai-content/database/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
+ * How many workspaces one account can list.
+ *
+ * The membership query fed an `.in(...)` filter built from its own result, so
+ * an account with many workspaces produced a query whose size grew with the
+ * data. This bounds it. It is deliberately generous: nobody legitimately
+ * running this product has more, and anyone who does needs a real list UI
+ * rather than a longer query.
+ */
+export const WORKSPACE_LIST_LIMIT = 100;
+
+/**
  * Workspace data access.
  *
  * No `server-only` import: the package is not a dependency (see Phase 1's
@@ -70,7 +81,12 @@ export async function listWorkspacesForUser(
   const { data: memberships, error: membershipError } = await supabase
     .from('workspace_members')
     .select('workspace_id, role')
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    // Bounded so the follow-up .in(...) cannot grow into an unbounded filter
+    // list. A person with more workspaces than this has a product problem the
+    // list UI would need to solve anyway; silently building a 500-element
+    // query is not the answer.
+    .limit(WORKSPACE_LIST_LIMIT);
 
   if (membershipError) {
     throw new WorkspaceRepositoryError('Unable to list workspaces.', membershipError);
