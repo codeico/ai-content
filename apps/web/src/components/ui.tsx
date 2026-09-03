@@ -217,17 +217,44 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
 }
 
 /* -------------------------------------------------------------- PageHeader */
+/**
+ * Trailing affordance on a list row: this cell opens another screen. Native
+ * lists use it, and without it a row reads as static text.
+ */
+export function Chevron() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="h-4 w-4 text-line-strong"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7.5 4.5 13 10l-5.5 5.5" />
+    </svg>
+  );
+}
 
 export function PageHeader({
   eyebrow,
   title,
   meta,
   action,
+  hideTitle,
 }: {
   eyebrow?: ReactNode;
   title: string;
   meta?: ReactNode;
   action?: ReactNode;
+  /**
+   * The screen's AppBar already renders this title as the page h1, so the
+   * header draws only its meta line. The title prop stays required because
+   * every screen still has one and the AppBar takes it from the same place.
+   */
+  hideTitle?: boolean;
 }) {
   return (
     <header className="flex flex-col gap-3 pb-6 sm:flex-row sm:items-end sm:justify-between">
@@ -237,9 +264,11 @@ export function PageHeader({
             {eyebrow}
           </div>
         ) : null}
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.01em] break-words sm:text-[30px]">
-          {title}
-        </h1>
+        {hideTitle ? null : (
+          <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.01em] break-words sm:text-[30px]">
+            {title}
+          </h1>
+        )}
         {meta ? <div className="mt-1 text-[14px] text-ink-soft">{meta}</div> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}

@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 hidden border-b border-line bg-paper/95 backdrop-blur-sm md:block">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link
             href="/app"

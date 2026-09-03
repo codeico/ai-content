@@ -20,6 +20,7 @@ import { EditContentForm } from '@/app/app/workspaces/[workspaceId]/content/[con
 import { EditSourceForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-source-form';
 import { GenerateCaptionButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/generate-caption-button';
 import { MediaStatusMark, PageHeader, SOURCE_TYPE_LABEL, StatusMark } from '@/components/ui';
+import { AppBar } from '@/components/app-bar';
 import { describeProfile } from '@/server/ai/caption-prompt';
 import {
   HUMAN_EDIT_MODEL_NAME,
@@ -130,17 +131,14 @@ export default async function ContentPage({ params }: ContentPageProps) {
   const sourceHost = content.source_url ? hostOf(content.source_url) : null;
 
   return (
-    <div className="rise">
-      <PageHeader
-        eyebrow={
-          <Link href={`/app/workspaces/${workspace.id}`} className="hover:text-ink">
-            {workspace.name}
-          </Link>
-        }
+    <div className="screen-in">
+      <AppBar
         title={content.title}
-        meta={<StatusMark status={content.status} />}
+        backHref={`/app/workspaces/${workspace.id}`}
+        backLabel={`Back to ${workspace.name}`}
       />
 
+      <PageHeader title={content.title} meta={<StatusMark status={content.status} />} hideTitle />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
         <div className="flex min-w-0 flex-col gap-10">
           <section aria-labelledby="edit-heading" className="border-t border-line pt-5">

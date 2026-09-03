@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { CreateWorkspaceForm } from '@/app/app/create-workspace-form';
-import { EmptyState, PageHeader } from '@/components/ui';
+import { Chevron, EmptyState, PageHeader } from '@/components/ui';
 import { listWorkspacesForUser } from '@/server/repositories/workspace-repository';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
@@ -51,12 +51,15 @@ export default async function AppPage() {
                 <li key={workspace.id} className="border-b border-line">
                   <Link
                     href={`/app/workspaces/${workspace.id}`}
-                    className="press -mx-2 flex min-h-14 items-center justify-between gap-4 rounded-control px-2 py-3 hover:bg-line/40"
+                    className="cell -mx-2 flex items-center justify-between gap-3 rounded-control px-2 py-3"
                   >
                     <span className="min-w-0 truncate text-[17px] font-medium">
                       {workspace.name}
                     </span>
-                    <span className="shrink-0 text-[13px] text-ink-faint capitalize">{role}</span>
+                    <span className="flex shrink-0 items-center gap-1.5 text-[13px] text-ink-faint">
+                      <span className="capitalize">{role}</span>
+                      <Chevron />
+                    </span>
                   </Link>
                 </li>
               ))}

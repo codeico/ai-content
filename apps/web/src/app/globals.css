@@ -90,6 +90,46 @@
     animation: rise 320ms var(--ease-out-quart) both;
   }
 
+  /*
+   * Screen entry. A native app slides a pushed screen in from the trailing
+   * edge; on the web the same gesture has to survive a full server render, so
+   * this is deliberately short and small — enough to read as "a new screen
+   * arrived", not enough to delay the content a user came for.
+   */
+  .screen-in {
+    animation: screen-in 260ms var(--ease-out-quart) both;
+  }
+
+  @keyframes screen-in {
+    from {
+      opacity: 0;
+      transform: translate3d(8px, 0, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /*
+   * A list row that behaves like a native cell: the whole row is the target,
+   * it highlights on touch rather than on hover, and it is at least 44px tall.
+   */
+  .cell {
+    min-height: 44px;
+    transition: background-color 120ms var(--ease-out-quart);
+  }
+
+  .cell:active {
+    background-color: var(--color-line);
+  }
+
+  @media (hover: hover) {
+    .cell:hover {
+      background-color: color-mix(in srgb, var(--color-line) 45%, transparent);
+    }
+  }
+
   @keyframes rise {
     from {
       opacity: 0;
@@ -103,6 +143,9 @@
 
   @media (prefers-reduced-motion: reduce) {
     .rise {
+      animation: none;
+    }
+    .screen-in {
       animation: none;
     }
     .press:active {

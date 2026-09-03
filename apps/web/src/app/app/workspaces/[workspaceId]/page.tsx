@@ -11,12 +11,14 @@ import { DeleteWorkspaceButton } from '@/app/app/workspaces/[workspaceId]/delete
 import { RenameWorkspaceForm } from '@/app/app/workspaces/[workspaceId]/rename-workspace-form';
 import {
   ButtonLink,
+  Chevron,
   EmptyState,
   PageHeader,
   SOURCE_TYPE_LABEL,
   STATUS_LABEL,
   StatusMark,
 } from '@/components/ui';
+import { AppBar } from '@/components/app-bar';
 import {
   countContentByStatus,
   listContentForWorkspace,
@@ -101,13 +103,11 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
   const boundCreateContent = createContent.bind(null, workspace.id);
 
   return (
-    <div className="rise">
+    <div className="screen-in">
+      <AppBar title={workspace.name} backHref="/app" backLabel="Back to Workspaces" />
+
       <PageHeader
-        eyebrow={
-          <Link href="/app" className="hover:text-ink">
-            Workspaces
-          </Link>
-        }
+        hideTitle
         title={workspace.name}
         meta={
           <>
@@ -152,7 +152,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
                 <li key={item.id} className="border-b border-line">
                   <Link
                     href={`/app/workspaces/${workspace.id}/content/${item.id}`}
-                    className="press -mx-2 flex min-h-14 items-center justify-between gap-4 rounded-control px-2 py-3 hover:bg-line/40"
+                    className="cell -mx-2 flex items-center justify-between gap-3 rounded-control px-2 py-3"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-[16px] font-medium">{item.title}</span>
@@ -162,7 +162,10 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
                         </span>
                       ) : null}
                     </span>
-                    <StatusMark status={item.status} />
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <StatusMark status={item.status} />
+                      <Chevron />
+                    </span>
                   </Link>
                 </li>
               ))}

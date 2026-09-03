@@ -9,12 +9,12 @@ import {
   type WorkspaceProfileInput,
 } from '@ai-content/shared/workspace/profile';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
 import { updateWorkspaceProfile } from '@/app/app/workspace-actions';
 import { EditProfileForm } from '@/app/app/workspaces/[workspaceId]/profile/edit-profile-form';
 import { EmptyState, PageHeader } from '@/components/ui';
+import { AppBar } from '@/components/app-bar';
 import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
@@ -96,16 +96,14 @@ export default async function WorkspaceProfilePage({ params }: WorkspaceProfileP
     : [];
 
   return (
-    <div className="rise max-w-[640px]">
-      <PageHeader
-        eyebrow={
-          <Link href={`/app/workspaces/${workspace.id}`} className="hover:text-ink">
-            {workspace.name}
-          </Link>
-        }
+    <div className="screen-in max-w-[640px]">
+      <AppBar
         title="Profile"
-        meta={role === 'owner' ? 'Owner' : 'Member'}
+        backHref={`/app/workspaces/${workspace.id}`}
+        backLabel={`Back to ${workspace.name}`}
       />
+
+      <PageHeader hideTitle title="Profile" meta={role === 'owner' ? 'Owner' : 'Member'} />
 
       <p className="mb-8 text-[15px] text-ink-soft">
         What this workspace is about and how it should sound. Later AI features read this instead of
