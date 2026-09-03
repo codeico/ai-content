@@ -40,9 +40,33 @@ export function CopyCaptionButton({ body }: { body: string }) {
     }
   }
 
+  // The announcement lives in its own status region, not on the button.
+  // aria-live on the control makes the control's NAME the live region, so a
+  // screen reader hears a button being renamed, and on failure the button
+  // loses its identity entirely ("Press and hold to copy" is not a name).
+  // The button keeps one stable name; the outcome is announced beside it.
+  const status =
+    state === 'copied'
+      ? 'Caption copied to the clipboard.'
+      : state === 'failed'
+        ? 'Could not copy. Select the text and copy it manually.'
+        : '';
+
   return (
-    <Button type="button" variant="quiet" onClick={copy} aria-live="polite">
-      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Press and hold to copy' : 'Copy'}
-    </Button>
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <Button type="button" variant="quiet" onClick={copy}>
+        Copy
+      </Button>
+
+      <span role="status" aria-live="polite" className="sr-only">
+        {status}
+      </span>
+
+      {state === 'idle' ? null : (
+        <span aria-hidden="true" className="text-[12px] text-ink-faint">
+          {state === 'copied' ? 'Copied' : 'Press and hold'}
+        </span>
+      )}
+    </span>
   );
 }

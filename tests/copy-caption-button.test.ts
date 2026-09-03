@@ -36,9 +36,23 @@ describe('copy control honesty', () => {
     expect(SOURCE).toMatch(/await navigator\.clipboard\.writeText/);
   });
 
-  it('renders a distinct label for the failed state', () => {
+  it('announces the outcome in a status region, not by renaming the button', () => {
+    // aria-live on the control makes the control's NAME the live region: a
+    // screen reader hears a button being renamed, and on failure the button
+    // loses its identity because the failure text is not a name.
+    expect(SOURCE).toMatch(/role="status"/);
+    expect(SOURCE).toMatch(/aria-live="polite"/);
+    expect(SOURCE).not.toMatch(/<Button[^>]*aria-live/s);
+  });
+
+  it('keeps one stable accessible name on the button', () => {
+    const buttonBlock = SOURCE.slice(SOURCE.indexOf('<Button'), SOURCE.indexOf('</Button>'));
+    expect(buttonBlock).not.toContain('state ===');
+  });
+
+  it('still distinguishes the failed state for sighted users', () => {
     expect(SOURCE).toContain("state === 'failed'");
-    expect(SOURCE).toMatch(/Press and hold to copy/);
+    expect(SOURCE).toMatch(/Could not copy/);
   });
 
   it('clears the reset timer on unmount', () => {
