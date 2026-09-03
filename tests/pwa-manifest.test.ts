@@ -115,3 +115,33 @@ describe('offline support is app-shell only', () => {
     expect(existsSync(join(process.cwd(), 'apps/web/src/app/offline/page.tsx'))).toBe(true);
   });
 });
+
+describe('the service worker cannot cache a personalised response', () => {
+  const SW = readFileSync(join(process.cwd(), 'apps/web/public/sw.js'), 'utf8');
+
+  it('allowlists /_next/static/ and not /_next/', () => {
+    // The image optimiser is at /_next/image?url=..., is not content-hashed,
+    // and proxies whatever URL it is handed - including a signed one.
+    expect(SW).toMatch(/startsWith\('\/_next\/static\/'\)/);
+    expect(SW).not.toMatch(/startsWith\('\/_next\/'\)/);
+  });
+
+  it('refuses a response the origin marked private', () => {
+    // Second line of defence: if the path allowlist is ever widened, these
+    // headers still keep a per-user response out of a shared cache.
+    expect(SW).toMatch(/function isCacheable/);
+    expect(SW).toMatch(/no-store/);
+    expect(SW).toMatch(/Set-Cookie/);
+    expect(SW).toMatch(/Vary/);
+  });
+
+  it('applies that check on the write path, not just defines it', () => {
+    // A helper that nothing calls is decoration.
+    expect(SW).toMatch(/response\.ok && isCacheable\(response\)/);
+  });
+
+  it('only handles same-origin GETs', () => {
+    expect(SW).toMatch(/request\.method !== 'GET'/);
+    expect(SW).toMatch(/url\.origin !== self\.location\.origin/);
+  });
+});

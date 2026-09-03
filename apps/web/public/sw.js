@@ -64,6 +64,11 @@ self.addEventListener('fetch', (event) => {
 
   // Immutable build output and public icons: cache-first is safe because the
   // filenames are content-hashed or the assets never carry user data.
+  //
+  // Deliberately '/_next/static/' and NOT '/_next/': the image optimiser lives
+  // at /_next/image?url=... , is not content-hashed, and proxies whatever URL
+  // it is given - including a signed or private one. Widening this prefix
+  // would quietly make it cacheable.
   const isStatic = url.pathname.startsWith('/_next/static/') || SHELL_ASSETS.includes(url.pathname);
   if (!isStatic) return;
 
@@ -72,7 +77,7 @@ self.addEventListener('fetch', (event) => {
       (cached) =>
         cached ??
         fetch(request).then((response) => {
-          if (response.ok) {
+          if (response.ok && isCacheable(response)) {
             const copy = response.clone();
             caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy));
           }
@@ -81,3 +86,22 @@ self.addEventListener('fetch', (event) => {
     ),
   );
 });
+
+/**
+ * Belt and braces on top of the path allowlist: never store a response the
+ * origin itself marked as user-specific. If a future edit widens the
+ * allowlist, these headers still keep a personalised response out of a shared
+ * cache.
+ */
+function isCacheable(response) {
+  const cacheControl = response.headers.get('Cache-Control') ?? '';
+
+  if (/\bprivate\b|\bno-store\b/i.test(cacheControl)) return false;
+  if (response.headers.has('Set-Cookie')) return false;
+
+  // Vary: Cookie means the body depends on who asked.
+  const vary = response.headers.get('Vary') ?? '';
+  if (/cookie|authorization/i.test(vary)) return false;
+
+  return true;
+}
