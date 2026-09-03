@@ -271,6 +271,13 @@ timezone NOT NULL
 UNIQUE(created_by, slug)
 ```
 
+> **Implemented subset (Phases 2–7A).** Live columns: `id`, `name`, `owner_id`
+> (the spec's `created_by`), `created_at`, `updated_at`. `niche` and
+> `description` live in `public.workspace_profiles` (see §9 note), not here, so
+> a workspace can exist before it is described and `niche NOT NULL` never needs
+> a backfill. `slug` and `timezone` are not modelled yet: no route uses a slug
+> (URLs are by UUID) and nothing schedules yet.
+
 ---
 
 # 7. workspace_members
@@ -417,6 +424,23 @@ UNIQUE(workspace_id)
 ```
 
 Satu workspace memiliki satu primary content profile pada MVP.
+
+> **Implemented as `public.workspace_profiles` (Phase 7A, decided 2026-09-03 — do
+> not "fix" back toward this table).** Table name says what it is: the
+> workspace's profile, not a profile of a content item (`content_profiles` reads
+> as a sibling of `content_sources`/`content_analysis`, which it is not). Columns
+> live: `niche` (≤100) and `description` (≤1000) moved here from §6 `workspaces`
+> so `workspaces` stays the small identity row and no `NOT NULL` backfill is
+> needed; plus `target_audience`, `tone`, `writing_style`, `content_goals`,
+> `restrictions` (each ≤1000). All nullable, non-blank when present ("not set"
+> is NULL, never ''). Not modelled yet: `ai_instructions` (overlaps
+> tone/style/restrictions; add when a prompt needs a distinct field) and
+> `default_language` (no consumer). RLS: members read via
+> `workspace_ids_for_current_user()`; INSERT/UPDATE owner-only via
+> `workspaces.owner_id`; no client DELETE (cascade only; "clear" is an UPDATE to
+> NULL). Migration `20260903120000_create_workspace_profiles.sql`. Length caps
+> mirror `PROFILE_SHORT_MAX_LENGTH` / `PROFILE_LONG_MAX_LENGTH` in
+> `packages/shared/src/workspace/profile.ts`.
 
 ---
 

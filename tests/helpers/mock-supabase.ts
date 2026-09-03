@@ -47,6 +47,10 @@ export class MockQueryBuilder implements PromiseLike<{ data: unknown; error: unk
     return this.record('update', args);
   }
 
+  upsert(...args: unknown[]): this {
+    return this.record('upsert', args);
+  }
+
   delete(...args: unknown[]): this {
     return this.record('delete', args);
   }

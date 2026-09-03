@@ -124,6 +124,56 @@ export type Database = {
           },
         ];
       };
+      workspace_profiles: {
+        Row: {
+          content_goals: string | null;
+          created_at: string;
+          description: string | null;
+          id: string;
+          niche: string | null;
+          restrictions: string | null;
+          target_audience: string | null;
+          tone: string | null;
+          updated_at: string;
+          workspace_id: string;
+          writing_style: string | null;
+        };
+        Insert: {
+          content_goals?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          niche?: string | null;
+          restrictions?: string | null;
+          target_audience?: string | null;
+          tone?: string | null;
+          updated_at?: string;
+          workspace_id: string;
+          writing_style?: string | null;
+        };
+        Update: {
+          content_goals?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          niche?: string | null;
+          restrictions?: string | null;
+          target_audience?: string | null;
+          tone?: string | null;
+          updated_at?: string;
+          workspace_id?: string;
+          writing_style?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_profiles_workspace_id_fkey';
+            columns: ['workspace_id'];
+            isOneToOne: true;
+            referencedRelation: 'workspaces';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       workspaces: {
         Row: {
           created_at: string;

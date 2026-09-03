@@ -9,6 +9,7 @@ import { CreateContentForm } from '@/app/app/workspaces/[workspaceId]/create-con
 import { DeleteWorkspaceButton } from '@/app/app/workspaces/[workspaceId]/delete-workspace-button';
 import { RenameWorkspaceForm } from '@/app/app/workspaces/[workspaceId]/rename-workspace-form';
 import {
+  ButtonLink,
   EmptyState,
   PageHeader,
   SOURCE_TYPE_LABEL,
@@ -16,6 +17,7 @@ import {
   StatusMark,
 } from '@/components/ui';
 import { listContentForWorkspace } from '@/server/repositories/content-repository';
+import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
@@ -57,10 +59,13 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   }
 
   const content = await listContentForWorkspace(supabase, workspace.id);
+  const profile = await getProfileForWorkspace(supabase, workspace.id);
   const counts = { draft: 0, ready: 0, archived: 0 };
   for (const item of content) counts[item.status]++;
 
   const canManage = workspace.role === 'owner';
+  const roleLabel = canManage ? 'Owner' : 'Member';
+  const profileHref = `/app/workspaces/${workspace.id}/profile`;
   const boundUpdateWorkspace = updateWorkspace.bind(null, workspace.id);
   const boundDeleteWorkspace = deleteWorkspace.bind(null, workspace.id);
   const boundCreateContent = createContent.bind(null, workspace.id);
@@ -75,21 +80,28 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
         }
         title={workspace.name}
         meta={
-          content.length === 0 ? (
-            'No content yet'
-          ) : (
-            <span className="tabular">
-              {content.length} item{content.length === 1 ? '' : 's'}
-              {(['draft', 'ready', 'archived'] as const)
-                .filter((s) => counts[s] > 0)
-                .map((s) => (
-                  <span key={s}>
-                    <span aria-hidden> / </span>
-                    {counts[s]} {STATUS_LABEL[s].toLowerCase()}
-                  </span>
-                ))}
-            </span>
-          )
+          <>
+            {profile?.niche ? (
+              <span className="block break-words">
+                {roleLabel} · {profile.niche}
+              </span>
+            ) : null}
+            {content.length === 0 ? (
+              'No content yet'
+            ) : (
+              <span className="tabular">
+                {content.length} item{content.length === 1 ? '' : 's'}
+                {(['draft', 'ready', 'archived'] as const)
+                  .filter((s) => counts[s] > 0)
+                  .map((s) => (
+                    <span key={s}>
+                      <span aria-hidden> / </span>
+                      {counts[s]} {STATUS_LABEL[s].toLowerCase()}
+                    </span>
+                  ))}
+              </span>
+            )}
+          </>
         }
       />
 
@@ -136,13 +148,27 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
               <h2 id="settings-heading" className="border-t border-line pt-5 font-medium">
                 Workspace settings
               </h2>
+              <div className="flex flex-col gap-1.5">
+                <ButtonLink href={profileHref} variant="secondary" className="w-full">
+                  Edit profile
+                </ButtonLink>
+                <p className="text-[13px] text-ink-faint">
+                  What this workspace is about and how it should sound.
+                </p>
+              </div>
               <RenameWorkspaceForm action={boundUpdateWorkspace} currentName={workspace.name} />
               <DeleteWorkspaceButton action={boundDeleteWorkspace} workspaceName={workspace.name} />
             </section>
           ) : (
-            <p className="border-t border-line pt-5 text-[14px] text-ink-soft">
-              You are a member. Only the owner can rename or delete this workspace.
-            </p>
+            <div className="border-t border-line pt-5 text-[14px] text-ink-soft">
+              <p>You are a member. Only the owner can rename or delete this workspace.</p>
+              <Link
+                href={profileHref}
+                className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-ink"
+              >
+                View profile
+              </Link>
+            </div>
           )}
         </aside>
       </div>

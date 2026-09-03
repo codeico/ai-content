@@ -1,9 +1,17 @@
 'use server';
 
 import { validateWorkspaceName, type WorkspaceFieldErrors } from '@ai-content/shared/workspace';
+import {
+  validateWorkspaceProfile,
+  type WorkspaceProfileFieldErrors,
+} from '@ai-content/shared/workspace/profile';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import {
+  upsertProfileAsOwner,
+  WorkspaceProfileRepositoryError,
+} from '@/server/repositories/workspace-profile-repository';
 import {
   createWorkspaceForUser,
   deleteWorkspaceAsOwner,
@@ -29,6 +37,13 @@ export interface WorkspaceFormState {
   error?: string;
   /** Per-field validation messages. */
   fieldErrors?: WorkspaceFieldErrors;
+}
+
+export interface WorkspaceProfileFormState {
+  error?: string;
+  fieldErrors?: WorkspaceProfileFieldErrors;
+  /** Set after a successful save so the form can confirm without a redirect. */
+  saved?: boolean;
 }
 
 /**
@@ -162,4 +177,61 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
   }
 
   redirect(deleted ? '/app' : `/app/workspaces/${workspaceId}`);
+}
+
+/**
+ * Saves the workspace AI profile. Owner-only, same authority chain as
+ * `updateWorkspace`: the repository's explicit `owner_id` check and the
+ * owner-write RLS policies agree, and a non-owner sees the same "no access"
+ * message a missing workspace would produce.
+ *
+ * All seven fields are submitted together; a blank field clears that value
+ * (the shared schema turns blank into null). `workspaceId` arrives via
+ * `.bind` from the page, never from the form body.
+ */
+export async function updateWorkspaceProfile(
+  workspaceId: string,
+  _prevState: WorkspaceProfileFormState,
+  formData: FormData,
+): Promise<WorkspaceProfileFormState> {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  const parsed = validateWorkspaceProfile({
+    niche: formData.get('niche'),
+    description: formData.get('description'),
+    target_audience: formData.get('target_audience'),
+    tone: formData.get('tone'),
+    writing_style: formData.get('writing_style'),
+    content_goals: formData.get('content_goals'),
+    restrictions: formData.get('restrictions'),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: parsed.fieldErrors };
+  }
+
+  let saved;
+
+  try {
+    const supabase = await createServerClient();
+    saved = await upsertProfileAsOwner(supabase, workspaceId, user.id, parsed.data);
+  } catch (error) {
+    if (error instanceof WorkspaceProfileRepositoryError) {
+      return { error: 'Unable to save the profile. Please try again.' };
+    }
+
+    throw error;
+  }
+
+  if (!saved) {
+    return { error: 'You do not have access to this workspace.' };
+  }
+
+  refresh();
+
+  return { saved: true };
 }
