@@ -35,7 +35,7 @@ export default async function ContentPage() {
         meta={
           items.length === 0
             ? 'Nothing yet'
-            : `${items.length} item${items.length === 1 ? '' : 's'} across your workspaces`
+            : `${items.length} item${items.length === 1 ? '' : 's'} / most recent first`
         }
       />
 
@@ -46,8 +46,8 @@ export default async function ContentPage() {
 
         {items.length === 0 ? (
           <EmptyState
-            title="No content yet"
-            body="Open a workspace and add your first piece of content. Everything starts as a draft."
+            title="Nothing in progress"
+            body="Content you add in any workspace shows up here."
           />
         ) : (
           <ul className="border-t border-line">
@@ -63,7 +63,7 @@ export default async function ContentPage() {
                       {item.workspace_name}
                       {item.source_type !== 'other' ? (
                         <>
-                          <span aria-hidden> · </span>
+                          <span aria-hidden> / </span>
                           {SOURCE_TYPE_LABEL[item.source_type]}
                         </>
                       ) : null}

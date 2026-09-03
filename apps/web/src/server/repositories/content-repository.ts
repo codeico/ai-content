@@ -149,7 +149,11 @@ export async function listAllContentForUser(
   const { data, error } = await supabase
     .from('content')
     .select(`${CONTENT_COLUMNS}, workspaces(name)`)
-    .order('created_at', { ascending: false })
+    // Archived rows are excluded and the sort is by recency of WORK, not of
+    // creation: this is a single stream with no filter UI, so without both it
+    // silts up into a junk drawer the user cannot escape.
+    .neq('status', 'archived')
+    .order('updated_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit);
 
