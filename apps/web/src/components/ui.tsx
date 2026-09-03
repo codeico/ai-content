@@ -110,6 +110,9 @@ export function Textarea(props: ComponentProps<'textarea'>) {
   );
 }
 
+/** Shared by AutoGrowTextarea, which needs the same box without the min height. */
+export const TEXTAREA_CLASS = cx(CONTROL_CLASS, 'resize-y py-2.5 leading-normal');
+
 /* ------------------------------------------------------------------ Notice */
 
 export function Notice({ tone, children }: { tone: 'error' | 'success'; children: ReactNode }) {

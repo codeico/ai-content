@@ -8,7 +8,8 @@ import {
 import { useActionState } from 'react';
 
 import type { WorkspaceProfileFormState } from '@/app/app/workspace-actions';
-import { Button, Field, Input, Notice, Textarea } from '@/components/ui';
+import { AutoGrowTextarea } from '@/components/auto-grow-textarea';
+import { Button, Field, Input, Notice } from '@/components/ui';
 
 interface EditProfileFormProps {
   action: (
@@ -83,20 +84,28 @@ export function EditProfileForm({ action, current }: EditProfileFormProps) {
           error={state.fieldErrors?.[field.name]}
         >
           {(a11y) => (
-            <Textarea
+            <AutoGrowTextarea
               {...a11y}
               name={field.name}
               maxLength={PROFILE_LONG_MAX_LENGTH}
               defaultValue={current[field.name] ?? ''}
-              rows={4}
+              rows={2}
             />
           )}
         </Field>
       ))}
 
-      <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:self-start">
-        {isPending ? 'Saving…' : 'Save profile'}
-      </Button>
+      {/*
+        Seven fields put Save at 1483px, off-screen at load and reachable only
+        by scrolling past every textarea. It sticks to the bottom instead, the
+        way a native form keeps its commit action in reach, and clears the tab
+        bar and the home indicator.
+      */}
+      <div className="pb-safe sticky bottom-0 -mx-4 mt-2 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur-sm sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+          {isPending ? 'Saving…' : 'Save profile'}
+        </Button>
+      </div>
     </form>
   );
 }
