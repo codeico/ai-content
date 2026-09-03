@@ -113,3 +113,71 @@ describe('packages/ai vendor neutrality', () => {
     expect(keys.sort()).toEqual(['Authorization', 'Content-Type']);
   });
 });
+
+/**
+ * The rule the product must keep, not just the package: neutrality is
+ * worthless if the first caller in apps/web hardcodes a vendor's model name or
+ * reads a vendor's key directly, bypassing createAIProvider. Scanning the
+ * application surface means the gate still bites once AI features land.
+ */
+const APP_ROOTS = [
+  join(import.meta.dirname, '..', 'apps', 'web', 'src'),
+  join(import.meta.dirname, '..', 'packages', 'shared', 'src'),
+];
+
+function collectSources(dir: string): { path: string; text: string }[] {
+  const found: { path: string; text: string }[] = [];
+
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      found.push(...collectSources(full));
+    } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
+      found.push({ path: full, text: readFileSync(full, 'utf8') });
+    }
+  }
+
+  return found;
+}
+
+describe('application code keeps the AI router replaceable', () => {
+  const appSources = APP_ROOTS.flatMap(collectSources).map(({ path, text }) => ({
+    path,
+    // Comments may legitimately name a vendor when explaining why we avoid it.
+    text: text
+      .split('\n')
+      .filter((line) => {
+        const trimmed = line.trim();
+        return !trimmed.startsWith('//') && !trimmed.startsWith('*') && !trimmed.startsWith('/*');
+      })
+      .join('\n'),
+  }));
+
+  it('finds application sources to check', () => {
+    expect(appSources.length).toBeGreaterThan(0);
+  });
+
+  it('reads no vendor-specific environment variable outside the router', () => {
+    for (const { path, text } of appSources) {
+      for (const forbidden of VENDOR_ENV_VARS) {
+        expect(text, `${path} reads a vendor env var`).not.toMatch(forbidden);
+      }
+    }
+  });
+
+  it('hardcodes no vendor model name', () => {
+    for (const { path, text } of appSources) {
+      for (const pattern of MODEL_NAME_PATTERNS) {
+        expect(text, `${path} matches ${pattern}`).not.toMatch(pattern);
+      }
+    }
+  });
+
+  it('imports no vendor SDK', () => {
+    for (const { path, text } of appSources) {
+      expect(text, path).not.toMatch(/from ['"]openai['"]/);
+      expect(text, path).not.toMatch(/from ['"]@anthropic-ai/);
+      expect(text, path).not.toMatch(/from ['"]@openrouter/);
+    }
+  });
+});
