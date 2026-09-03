@@ -44,7 +44,17 @@ describe('the form works without JavaScript', () => {
     // Before mount, and forever on a client that runs no JS, the markup is a
     // plain section containing the form - not a button that cannot be pressed.
     expect(SHEET).toMatch(/if \(!enhanced\)/);
-    expect(SHEET).toMatch(/sheet-fallback-title/);
+
+    // The fallback branch must actually render children and label itself.
+    // Matching the id alone survived renaming it, because the string also
+    // appears on the aria-labelledby attribute.
+    const fallback = SHEET.slice(
+      SHEET.indexOf('if (!enhanced)'),
+      SHEET.indexOf('return (\n    <>'),
+    );
+    expect(fallback).toMatch(/aria-labelledby="sheet-fallback-title"/);
+    expect(fallback).toMatch(/id="sheet-fallback-title"/);
+    expect(fallback).toMatch(/\{children\}/);
   });
 
   it('does not own the form', () => {

@@ -41,9 +41,11 @@ describe('password managers can fill the form', () => {
 
   it('distinguishes signing in from creating an account', () => {
     // current-password vs new-password decides whether a manager offers the
-    // saved credential or proposes a new one.
-    expect(CREDENTIAL_FORM).toMatch(/current-password/);
-    expect(CREDENTIAL_FORM).toMatch(/new-password/);
+    // saved credential or proposes a new one. Assert the autoComplete
+    // attribute itself: both words also appear in the comment above the
+    // branch, so a bare match survived replacing them with 'password'.
+    expect(CREDENTIAL_FORM).toMatch(/autoComplete=\{[^}]*'current-password'/);
+    expect(CREDENTIAL_FORM).toMatch(/autoComplete=\{[^}]*'new-password'/);
   });
 });
 

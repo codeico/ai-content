@@ -25,7 +25,12 @@ const WORKSPACE_ACTIONS = readFileSync(
 describe('the boundary offers a way out', () => {
   it('gives the user a retry rather than a dead end', () => {
     expect(BOUNDARY).toMatch(/onClick=\{reset\}/);
-    expect(BOUNDARY).toMatch(/Try again/);
+
+    // The label must be on the button that calls reset. "Try again" also
+    // appears in the body copy, so a bare match survived relabelling it.
+    const button = BOUNDARY.slice(BOUNDARY.indexOf('<Button'), BOUNDARY.indexOf('</Button>'));
+    expect(button).toMatch(/onClick=\{reset\}/);
+    expect(button).toMatch(/Try again/);
   });
 
   it('mentions the connection, which is the usual cause', () => {
