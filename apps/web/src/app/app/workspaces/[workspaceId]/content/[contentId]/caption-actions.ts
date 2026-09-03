@@ -97,9 +97,12 @@ export type ProviderFactory = () => { provider: AIProvider; model: string };
 export async function generateCaption(
   workspaceId: string,
   contentId: string,
-  _prevState: CaptionActionState,
-  _formData: FormData,
+  prevState: CaptionActionState,
+  formData: FormData,
 ): Promise<CaptionActionState> {
+  // useActionState's signature; the button carries no fields, the ids are bound.
+  void prevState;
+  void formData;
   return generateCaptionWith(defaultProvider, workspaceId, contentId);
 }
 
@@ -202,9 +205,12 @@ export async function selectCaption(
   workspaceId: string,
   contentId: string,
   captionId: string,
-  _prevState: CaptionActionState,
-  _formData: FormData,
+  prevState: CaptionActionState,
+  formData: FormData,
 ): Promise<CaptionActionState> {
+  void prevState;
+  void formData;
+
   const user = await getAuthenticatedUser();
 
   if (!user) {

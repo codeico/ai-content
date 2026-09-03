@@ -9,11 +9,20 @@ import {
   updateContent,
   updateContentSource,
 } from '@/app/app/workspaces/[workspaceId]/content-actions';
+import {
+  generateCaption,
+  selectCaption,
+} from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-actions';
+import { CaptionVersion } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-version';
 import { DeleteContentButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/delete-content-button';
 import { EditContentForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-content-form';
 import { EditSourceForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-source-form';
+import { GenerateCaptionButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/generate-caption-button';
 import { MediaStatusMark, PageHeader, SOURCE_TYPE_LABEL, StatusMark } from '@/components/ui';
+import { describeProfile } from '@/server/ai/caption-prompt';
+import { listCaptionsForContent } from '@/server/repositories/caption-repository';
 import { getContentInWorkspace } from '@/server/repositories/content-repository';
+import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
@@ -27,9 +36,10 @@ export const metadata: Metadata = { title: 'Content' };
 /**
  * Later pipeline stages. Listed so the shape of the product is visible, but
  * each is plainly marked unavailable. None of them is wired to anything.
- * Source left this list in Phase 6 when it became a real section.
+ * Source left this list in Phase 6, Caption in Phase 7B, when they became
+ * real sections.
  */
-const UPCOMING_STAGES = ['Creative', 'Caption', 'Publish'] as const;
+const UPCOMING_STAGES = ['Creative', 'Publish'] as const;
 
 const dateFormat = new Intl.DateTimeFormat('en', {
   dateStyle: 'medium',
@@ -84,7 +94,19 @@ export default async function ContentPage({ params }: ContentPageProps) {
     notFound();
   }
 
+  // Both scoped by the verified workspace id; independent of each other, so
+  // they overlap. The profile is read only to say whether it is filled in —
+  // the prompt itself is built server-side in the action.
+  const [captions, profile] = await Promise.all([
+    listCaptionsForContent(supabase, workspace.id, content.id),
+    getProfileForWorkspace(supabase, workspace.id),
+  ]);
+
+  // Same rule the prompt uses, so the hint and the model agree on "empty".
+  const profileIsEmpty = describeProfile(profile) === null;
+
   const boundUpdateContent = updateContent.bind(null, workspace.id, content.id);
+  const boundGenerateCaption = generateCaption.bind(null, workspace.id, content.id);
   const boundUpdateContentSource = updateContentSource.bind(null, workspace.id, content.id);
   const boundDeleteContent = deleteContent.bind(null, workspace.id, content.id);
 
@@ -138,6 +160,48 @@ export default async function ContentPage({ params }: ContentPageProps) {
             />
           </section>
 
+          <section aria-labelledby="captions-heading" className="border-t border-line pt-5">
+            <h2 id="captions-heading" className="mb-1 font-medium">
+              Caption
+            </h2>
+            <p className="mb-4 text-[14px] text-ink-soft">
+              {captions.length === 0
+                ? 'Written from the title, the source and the workspace AI profile. Every version is kept.'
+                : 'Every version is kept. Pick the one to use; writing another never replaces it.'}
+            </p>
+
+            {profileIsEmpty ? (
+              <p className="mb-4 text-[14px] text-ink-soft">
+                The workspace has no AI profile yet, so captions will be generic.{' '}
+                <Link
+                  href={`/app/workspaces/${workspace.id}/profile`}
+                  className="underline underline-offset-2 hover:text-ink"
+                >
+                  {workspace.owner_id === user.id ? 'Fill it in' : 'See the profile'}
+                </Link>
+                .
+              </p>
+            ) : null}
+
+            <GenerateCaptionButton
+              action={boundGenerateCaption}
+              hasCaptions={captions.length > 0}
+            />
+
+            {captions.length > 0 ? (
+              <ol className="mt-6" aria-label="Caption versions">
+                {captions.map((caption) => (
+                  <CaptionVersion
+                    key={caption.id}
+                    caption={caption}
+                    createdLabel={dateFormat.format(new Date(caption.created_at))}
+                    action={selectCaption.bind(null, workspace.id, content.id, caption.id)}
+                  />
+                ))}
+              </ol>
+            ) : null}
+          </section>
+
           <section aria-labelledby="stages-heading" className="border-t border-line pt-5">
             <h2 id="stages-heading" className="mb-1 font-medium">
               Pipeline
@@ -145,7 +209,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
             <p className="mb-4 text-[14px] text-ink-soft">
               Later stages. Nothing here is active yet.
             </p>
-            <ol className="grid grid-cols-3 gap-x-6">
+            <ol className="grid grid-cols-2 gap-x-6">
               {UPCOMING_STAGES.map((stage) => (
                 <li key={stage} className="border-t border-dashed border-line-strong py-3">
                   <span className="block text-[15px] text-ink-faint">{stage}</span>

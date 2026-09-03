@@ -1,3 +1,4 @@
+import type { CaptionStatus } from '@ai-content/shared/content/caption';
 import type { ContentSourceType, ContentStatus, MediaStatus } from '@ai-content/shared/content';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
@@ -175,6 +176,18 @@ const MEDIA_STATUS_TONE: Record<MediaStatus, StatusTone> = {
   missing: 'danger',
 };
 
+export const CAPTION_STATUS_LABEL: Record<CaptionStatus, string> = {
+  draft: 'Draft',
+  active: 'Selected',
+  archived: 'Previous',
+};
+
+const CAPTION_STATUS_TONE: Record<CaptionStatus, StatusTone> = {
+  draft: 'pending',
+  active: 'ready',
+  archived: 'muted',
+};
+
 /** Text-only status. Colour carries state; no badge chrome. */
 export function StatusMark({ status }: { status: ContentStatus }) {
   return <ToneMark tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</ToneMark>;
@@ -182,6 +195,10 @@ export function StatusMark({ status }: { status: ContentStatus }) {
 
 export function MediaStatusMark({ status }: { status: MediaStatus }) {
   return <ToneMark tone={MEDIA_STATUS_TONE[status]}>{MEDIA_STATUS_LABEL[status]}</ToneMark>;
+}
+
+export function CaptionStatusMark({ status }: { status: CaptionStatus }) {
+  return <ToneMark tone={CAPTION_STATUS_TONE[status]}>{CAPTION_STATUS_LABEL[status]}</ToneMark>;
 }
 
 function ToneMark({ tone, children }: { tone: StatusTone; children: ReactNode }) {
