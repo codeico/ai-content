@@ -84,7 +84,7 @@ export function Field({ id, label, error, hint, hideLabel, children }: FieldProp
   );
 }
 
-export const CONTROL_CLASS =
+const CONTROL_CLASS =
   'min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-base text-ink placeholder:text-ink-faint focus-visible:border-accent aria-invalid:border-danger';
 
 export function Input(props: ComponentProps<'input'>) {
@@ -93,6 +93,20 @@ export function Input(props: ComponentProps<'input'>) {
 
 export function Select(props: ComponentProps<'select'>) {
   return <select {...props} className={cx(CONTROL_CLASS, 'appearance-auto', props.className)} />;
+}
+
+/** Multi-line control. Same box as Input; vertical resize only, so the layout never widens. */
+export function Textarea(props: ComponentProps<'textarea'>) {
+  return (
+    <textarea
+      {...props}
+      className={cx(
+        CONTROL_CLASS,
+        'min-h-[7.5rem] resize-y py-2.5 leading-normal',
+        props.className,
+      )}
+    />
+  );
 }
 
 /* ------------------------------------------------------------------ Notice */
@@ -139,7 +153,7 @@ export const MEDIA_STATUS_LABEL: Record<MediaStatus, string> = {
  * product: accent = ready/available, warn = draft/pending, muted = archived
  * or a neutral fact, danger = something that should exist and does not.
  */
-export type StatusTone = 'ready' | 'pending' | 'muted' | 'neutral' | 'danger';
+type StatusTone = 'ready' | 'pending' | 'muted' | 'neutral' | 'danger';
 
 const TONE_CLASS: Record<StatusTone, string> = {
   ready: 'text-accent',

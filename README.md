@@ -144,7 +144,10 @@ processing, Instagram publishing, PWA and push notifications, observability, and
 security hardening. The order is defined in `docs/IMPLEMENTATION_ROADMAP.md`.
 
 Database changes are made only through new files in `supabase/migrations/`;
-applied migrations are never edited.
+applied migrations are never edited. The Supabase CLI is pinned as a
+devDependency: `npm run db:push:dry` previews pending migrations against the
+linked project, `npm run db:push` applies them, `npm run db:migrations` shows
+local vs remote state.
 
 ## Documentation
 
