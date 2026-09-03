@@ -60,7 +60,17 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
  * environment. Missing model = AI not configured, same as a missing key.
  */
 export const futureProviderEnvSchema = z.object({
-  AI_ROUTER_BASE_URL: requiredString.url().optional(),
+  // http(s) only. `z.url()` alone accepts ftp://, file:// and similar, which
+  // would pass configuration validation and then fail at request time as an
+  // opaque network error — the misleading failure this validation exists to
+  // prevent. A wrong scheme is a configuration fault, so it is caught here.
+  AI_ROUTER_BASE_URL: requiredString
+    .url()
+    .refine(
+      (value) => /^https?:\/\//i.test(value),
+      'AI_ROUTER_BASE_URL must be an http:// or https:// URL.',
+    )
+    .optional(),
   AI_ROUTER_API_KEY: requiredString.optional(),
   AI_ROUTER_MODEL: requiredString.optional(),
 });
