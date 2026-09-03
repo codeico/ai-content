@@ -19,6 +19,7 @@ import {
   StatusMark,
 } from '@/components/ui';
 import { AppBar } from '@/components/app-bar';
+import { Sheet } from '@/components/sheet';
 import {
   countContentByStatus,
   listContentForWorkspace,
@@ -201,7 +202,9 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
         </section>
 
         <aside className="flex flex-col gap-10">
-          <CreateContentForm action={boundCreateContent} />
+          <Sheet trigger="New content" title="New content">
+            <CreateContentForm action={boundCreateContent} />
+          </Sheet>
 
           {canManage ? (
             <section aria-labelledby="settings-heading" className="flex flex-col gap-5">

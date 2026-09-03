@@ -130,6 +130,45 @@
     }
   }
 
+  /*
+   * Bottom sheet. Pinned to the bottom edge on a phone so it reads as having
+   * come from there; centred like an ordinary dialog once there is room.
+   */
+  .sheet {
+    height: 100dvh;
+    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sheet[open] > div {
+    animation: sheet-up 280ms var(--ease-out-quart) both;
+  }
+
+  .sheet[open]::backdrop {
+    animation: fade-in 280ms var(--ease-out-quart) both;
+  }
+
+  @keyframes sheet-up {
+    from {
+      transform: translate3d(0, 12px, 0);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   @keyframes rise {
     from {
       opacity: 0;
@@ -146,6 +185,10 @@
       animation: none;
     }
     .screen-in {
+      animation: none;
+    }
+    .sheet[open] > div,
+    .sheet[open]::backdrop {
       animation: none;
     }
     .press:active {
