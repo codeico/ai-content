@@ -74,14 +74,18 @@ trailing `/chat/completions` are stripped, so `.../v1`, `.../v1/`, and
 | -------------------- | ----------- | --------- |
 | `AI_ROUTER_BASE_URL` | server-only | Optional  |
 | `AI_ROUTER_API_KEY`  | server-only | Optional  |
+| `AI_ROUTER_MODEL`    | server-only | Optional  |
 
-Both are validated by the existing `futureProviderEnvSchema` in
+All three are validated by the existing `futureProviderEnvSchema` in
 `@ai-content/shared/env`. They are optional at boot: login, workspace, and
 content pages render without them. `createAIProvider()` throws
 `AIError('not_configured')` naming the missing variable(s) — and only when
 something actually tries to use AI.
 
-There is no `AI_ROUTER_DEFAULT_MODEL`; no caller needs one yet.
+`AI_ROUTER_MODEL` is the model id the application asks the router for. It
+became necessary with the first caller (caption generation, Phase 7B). It is
+read by that caller and passed as `AIChatRequest.model`; the provider itself
+still has no default and never reads it. Nothing in code names a model.
 
 ## Server-only secret handling
 

@@ -50,13 +50,19 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
  *
  * The AI backend is addressed as a configurable, OpenAI-compatible AI Router.
  * The base URL is validated as a URL when present, so a typo is caught at
- * configuration time rather than on the first request. Both values are
- * server-only: neither carries a `NEXT_PUBLIC_` prefix, so neither reaches a
+ * configuration time rather than on the first request. All values are
+ * server-only: none carries a `NEXT_PUBLIC_` prefix, so none reaches a
  * browser bundle.
+ *
+ * AI_ROUTER_MODEL names the model the application asks the router for. It is
+ * configuration, not code: no model id is hardcoded anywhere (AI_ARCHITECTURE
+ * "Model handling"), and the same build can run against different models per
+ * environment. Missing model = AI not configured, same as a missing key.
  */
 export const futureProviderEnvSchema = z.object({
   AI_ROUTER_BASE_URL: requiredString.url().optional(),
   AI_ROUTER_API_KEY: requiredString.optional(),
+  AI_ROUTER_MODEL: requiredString.optional(),
 });
 
 export type FutureProviderEnv = z.infer<typeof futureProviderEnvSchema>;

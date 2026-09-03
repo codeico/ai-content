@@ -84,9 +84,20 @@ describe('loadFutureProviderEnv', () => {
     const config = {
       AI_ROUTER_BASE_URL: 'https://your-ai-router.example/v1',
       AI_ROUTER_API_KEY: 'router-key',
+      AI_ROUTER_MODEL: 'some-model-id',
     };
 
     expect(loadFutureProviderEnv(config)).toEqual(config);
+  });
+
+  it('treats the model as optional at load time, like the other two', () => {
+    // The first caller (caption generation) asserts it at the point of use;
+    // an unset model must not stop unrelated pages from rendering.
+    expect(loadFutureProviderEnv({ AI_ROUTER_API_KEY: 'k' })).toEqual({ AI_ROUTER_API_KEY: 'k' });
+  });
+
+  it('rejects a present-but-empty model id', () => {
+    expect(() => loadFutureProviderEnv({ AI_ROUTER_MODEL: '   ' })).toThrow(EnvValidationError);
   });
 
   it('accepts any OpenAI-compatible endpoint, including a local one', () => {
