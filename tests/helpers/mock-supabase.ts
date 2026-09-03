@@ -35,6 +35,14 @@ export class MockQueryBuilder implements PromiseLike<{ data: unknown; error: unk
     return this.record('in', args);
   }
 
+  neq(...args: unknown[]): this {
+    return this.record('neq', args);
+  }
+
+  limit(...args: unknown[]): this {
+    return this.record('limit', args);
+  }
+
   order(...args: unknown[]): this {
     return this.record('order', args);
   }
@@ -74,17 +82,37 @@ export class MockQueryBuilder implements PromiseLike<{ data: unknown; error: unk
   }
 }
 
-/** Builds a mock Supabase client that returns one builder per table name. */
-export function createMockClient(builders: Record<string, MockQueryBuilder>): {
+/**
+ * Builds a mock Supabase client that returns one builder per table name.
+ *
+ * A table may be given an array of builders instead of one; each `from(table)`
+ * call then consumes the next builder in order, for repositories that issue
+ * several queries against the same table in one function (read latest version,
+ * then insert). Running out is a test bug and throws.
+ */
+export function createMockClient(builders: Record<string, MockQueryBuilder | MockQueryBuilder[]>): {
   client: SupabaseClient<Database>;
   from: ReturnType<typeof vi.fn>;
 } {
+  const queues = new Map<string, MockQueryBuilder[]>();
+
   const from = vi.fn((table: string) => {
-    const builder = builders[table];
-    if (!builder) {
+    const configured = builders[table];
+    if (!configured) {
       throw new Error(`Test did not configure a builder for table "${table}"`);
     }
-    return builder;
+    if (!Array.isArray(configured)) {
+      return configured;
+    }
+    const queue = queues.get(table) ?? [...configured];
+    queues.set(table, queue);
+    const next = queue.shift();
+    if (!next) {
+      throw new Error(
+        `Test configured ${configured.length} builder(s) for "${table}" but more were requested`,
+      );
+    }
+    return next;
   });
 
   return { client: { from } as unknown as SupabaseClient<Database>, from };

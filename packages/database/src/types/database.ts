@@ -8,6 +8,63 @@ export type Database = {
   };
   public: {
     Tables: {
+      captions: {
+        Row: {
+          body: string;
+          content_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          model_name: string;
+          prompt_version: string;
+          status: string;
+          updated_at: string;
+          version: number;
+          workspace_id: string;
+        };
+        Insert: {
+          body: string;
+          content_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          model_name: string;
+          prompt_version: string;
+          status?: string;
+          updated_at?: string;
+          version: number;
+          workspace_id: string;
+        };
+        Update: {
+          body?: string;
+          content_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          model_name?: string;
+          prompt_version?: string;
+          status?: string;
+          updated_at?: string;
+          version?: number;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'captions_content_id_fkey';
+            columns: ['content_id'];
+            isOneToOne: false;
+            referencedRelation: 'content';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'captions_workspace_id_fkey';
+            columns: ['workspace_id'];
+            isOneToOne: false;
+            referencedRelation: 'workspaces';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       content: {
         Row: {
           created_at: string;
