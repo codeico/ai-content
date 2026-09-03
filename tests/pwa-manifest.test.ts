@@ -145,3 +145,58 @@ describe('the service worker cannot cache a personalised response', () => {
     expect(SW).toMatch(/url\.origin !== self\.location\.origin/);
   });
 });
+
+describe('a forgotten cache bump stays harmless', () => {
+  const SW = readFileSync(join(process.cwd(), 'apps/web/public/sw.js'), 'utf8');
+
+  /**
+   * SHELL_CACHE is bumped by hand. That is only safe because nothing mutable
+   * is cached at a stable URL: chunks are content-hashed so a stale entry is
+   * never requested again, and navigations are network-first so page HTML is
+   * never served stale.
+   *
+   * These assertions hold that reasoning true. If a future change caches
+   * something mutable at a fixed path, the constant becomes load-bearing and
+   * forgetting it starts serving wrong code to returning visitors.
+   */
+  it('caches only content-hashed paths beyond the four shell assets', () => {
+    const allowlist = SW.slice(SW.indexOf('const isStatic'), SW.indexOf('if (!isStatic) return;'));
+
+    expect(allowlist).toMatch(/\/_next\/static\//);
+    expect(allowlist).toMatch(/SHELL_ASSETS\.includes/);
+  });
+
+  it('keeps the shell asset list to identity-free, rarely-changing files', () => {
+    const list = SW.slice(SW.indexOf('const SHELL_ASSETS'), SW.indexOf('self.addEventListener'));
+
+    // Adding an HTML route here would make it stale-able at a stable URL.
+    expect(list).not.toMatch(/'\/app/);
+    expect(list).toMatch(/OFFLINE_URL/);
+  });
+
+  it('serves navigations network-first so HTML is never stale', () => {
+    const nav = SW.slice(
+      SW.indexOf("request.mode === 'navigate'"),
+      SW.indexOf('// Immutable build'),
+    );
+
+    // fetch() first, cache only as the fallback.
+    expect(nav.indexOf('fetch(request)')).toBeLessThan(nav.indexOf('caches.match'));
+  });
+
+  it('drops every cache that is not the current one on activate', () => {
+    expect(SW).toMatch(/keys\.filter\(\(k\) => k !== SHELL_CACHE\)/);
+  });
+
+  it('states the safety argument next to the constant it justifies', () => {
+    // Kept deliberately narrow. Earlier versions of this check matched
+    // phrases that also appear elsewhere in the file, so deleting the
+    // explanation passed twice. Asserting on prose is weak by nature - the
+    // real protection is the four behavioural tests above, and this only
+    // guards against the comment being dropped wholesale.
+    const versionDoc = SW.slice(SW.indexOf('/*\n * Cache version.'), SW.indexOf('const VERSION'));
+
+    expect(versionDoc.length).toBeGreaterThan(400);
+    expect(versionDoc).toMatch(/content-hashed/);
+  });
+});

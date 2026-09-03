@@ -9,6 +9,26 @@
  * Navigations are network-first with an offline fallback: a stale shell that
  * shows nothing useful is worse than an honest "you are offline" screen.
  */
+/*
+ * Cache version.
+ *
+ * Bumped by hand, and that is a real hazard worth naming: forget it on a
+ * release and a returning visitor keeps serving the previous release's chunks
+ * from cache-first storage. Only people who visited before are affected,
+ * which is why it goes unnoticed.
+ *
+ * What makes it survivable here rather than merely documented: nothing that
+ * changes between releases is cached under a stable URL. Chunk filenames are
+ * content-hashed, so new HTML asks for new filenames and a stale entry is
+ * simply never requested again - it wastes a little storage instead of
+ * serving wrong code. Navigations are network-first, so page HTML is never
+ * stale. Only the four shell assets sit at stable paths, and of those, only
+ * the icons and manifest could go out of date; a wrong icon is cosmetic.
+ *
+ * So the failure mode of forgetting is bounded to dead storage and a possibly
+ * old icon. If a future change ever caches something mutable at a stable URL,
+ * that stops being true and this constant becomes load-bearing.
+ */
 const VERSION = 'v1';
 const SHELL_CACHE = `shell-${VERSION}`;
 const OFFLINE_URL = '/offline';
