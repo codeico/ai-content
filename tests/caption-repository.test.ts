@@ -139,10 +139,11 @@ describe('insertNextCaptionVersion', () => {
 });
 
 describe('selectCaptionAsActive', () => {
-  it('archives the previous active in the same content, then activates the target', async () => {
+  it('verifies the target, archives the previous active, then activates the target', async () => {
+    const verify = new MockQueryBuilder({ data: { id: CAPTION, status: 'draft' }, error: null });
     const archive = new MockQueryBuilder({ data: null, error: null });
     const activate = new MockQueryBuilder({ data: { ...ROW, status: 'active' }, error: null });
-    const { client } = createMockClient({ captions: [archive, activate] });
+    const { client } = createMockClient({ captions: [verify, archive, activate] });
 
     const result = await selectCaptionAsActive(client, WS, CONTENT, CAPTION);
 
@@ -162,18 +163,23 @@ describe('selectCaptionAsActive', () => {
     expect(eqFilters(activate)).toEqual({ workspace_id: WS, content_id: CONTENT, id: CAPTION });
   });
 
-  it('returns null when the target is not in this workspace/content', async () => {
+  it('returns null when the target is not in this workspace/content, without archiving', async () => {
+    const verify = new MockQueryBuilder({ data: null, error: null });
     const archive = new MockQueryBuilder({ data: null, error: null });
-    const activate = new MockQueryBuilder({ data: null, error: null });
-    const { client } = createMockClient({ captions: [archive, activate] });
+    const { client } = createMockClient({ captions: [verify, archive] });
 
     expect(await selectCaptionAsActive(client, WS, CONTENT, CAPTION)).toBeNull();
+
+    // A stale page or a tampered id must not strip the content's active
+    // caption on its way to "not found".
+    expect(archive.calls).toEqual([]);
   });
 
   it('stops before activating if archiving fails', async () => {
+    const verify = new MockQueryBuilder({ data: { id: CAPTION, status: 'draft' }, error: null });
     const archive = new MockQueryBuilder({ data: null, error: { code: 'x', message: 'x' } });
     const activate = new MockQueryBuilder({ data: ROW, error: null });
-    const { client } = createMockClient({ captions: [archive, activate] });
+    const { client } = createMockClient({ captions: [verify, archive, activate] });
 
     await expect(selectCaptionAsActive(client, WS, CONTENT, CAPTION)).rejects.toBeInstanceOf(
       CaptionRepositoryError,

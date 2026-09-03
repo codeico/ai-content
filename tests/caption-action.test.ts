@@ -340,9 +340,10 @@ describe('selectCaption', () => {
   });
 
   it('archives then activates through the repository and refreshes', async () => {
+    const verify = new MockQueryBuilder({ data: { id: CAPTION_ID, status: 'draft' }, error: null });
     const archive = new MockQueryBuilder({ data: null, error: null });
     const activate = new MockQueryBuilder({ data: { ...SAVED, status: 'active' }, error: null });
-    const { client } = happyClient({ captions: [archive, activate] });
+    const { client } = happyClient({ captions: [verify, archive, activate] });
     mocks.createServerClient.mockResolvedValue(client);
 
     const state = await selectCaption(WS, CONTENT_ID, CAPTION_ID, {}, FORM);
@@ -358,10 +359,7 @@ describe('selectCaption', () => {
 
   it('returns Caption not found when the id is outside the content', async () => {
     const { client } = happyClient({
-      captions: [
-        new MockQueryBuilder({ data: null, error: null }),
-        new MockQueryBuilder({ data: null, error: null }),
-      ],
+      captions: [new MockQueryBuilder({ data: null, error: null })],
     });
     mocks.createServerClient.mockResolvedValue(client);
 

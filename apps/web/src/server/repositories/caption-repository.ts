@@ -113,10 +113,17 @@ export async function insertNextCaptionVersion(
 
 /**
  * Makes one caption the active one for its content, archiving whichever was
- * active before. Two statements because the partial unique index permits only
- * one active row: archive first, then activate. If the second statement fails
- * the content is left with no active caption rather than two — recoverable by
- * selecting again, and never a violated invariant.
+ * active before.
+ *
+ * The target is verified FIRST. Archiving before knowing the target exists
+ * would let a stale page or a tampered id strip the content's active caption
+ * and then fail — the user would see "not found" while quietly losing their
+ * selection. Verify, archive, activate.
+ *
+ * Two write statements are still needed because the partial unique index
+ * permits only one active row. If the second fails, the content is left with
+ * no active caption rather than two: recoverable by selecting again, and never
+ * a violated invariant.
  *
  * Returns null when the caption is not in this workspace/content (RLS or
  * predicate miss) — indistinguishable from "does not exist" on purpose.
@@ -127,6 +134,22 @@ export async function selectCaptionAsActive(
   contentId: string,
   captionId: string,
 ): Promise<Caption | null> {
+  const { data: target, error: targetError } = await supabase
+    .from('captions')
+    .select('id, status')
+    .eq('workspace_id', workspaceId)
+    .eq('content_id', contentId)
+    .eq('id', captionId)
+    .maybeSingle();
+
+  if (targetError) {
+    throw new CaptionRepositoryError('Unable to select caption.', targetError);
+  }
+
+  if (!target) {
+    return null;
+  }
+
   const { error: archiveError } = await supabase
     .from('captions')
     .update({ status: 'archived' })
