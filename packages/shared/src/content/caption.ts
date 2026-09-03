@@ -24,6 +24,21 @@ export type CaptionStatus = (typeof CAPTION_STATUSES)[number];
  */
 export const CAPTION_BODY_MAX_LENGTH = 4000;
 
+/**
+ * How many versions one content item may accumulate.
+ *
+ * Every generate is a real, paid model call, and the button being disabled
+ * while pending is cosmetic: a direct Server Action POST ignores it. Without a
+ * ceiling any member can loop spend against the workspace's router key. Twenty
+ * drafts is far more than anyone needs to pick a caption, so the cap costs
+ * nothing in practice and bounds the damage.
+ *
+ * Not a rate limit. A real one needs shared state this app does not have yet
+ * (Redis is queue-only today); this bounds total spend per content item, not
+ * the rate of it.
+ */
+export const CAPTION_MAX_VERSIONS = 20;
+
 /** Route/param ids are attacker-controlled; reject non-UUIDs before any query. */
 export const captionIdSchema = z.uuid();
 

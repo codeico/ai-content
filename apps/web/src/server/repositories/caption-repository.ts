@@ -42,6 +42,28 @@ export function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+/**
+ * How many versions this content already has. Used to bound paid generation
+ * before a model is called; scoped by both ids like every other query here.
+ */
+export async function countCaptionsForContent(
+  supabase: CaptionClient,
+  workspaceId: string,
+  contentId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('captions')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .eq('content_id', contentId);
+
+  if (error) {
+    throw new CaptionRepositoryError('Unable to count captions.', error);
+  }
+
+  return count ?? 0;
+}
+
 /** Newest version first, so the page reads top-down from latest to oldest. */
 export async function listCaptionsForContent(
   supabase: CaptionClient,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CaptionRepositoryError,
+  countCaptionsForContent,
   insertNextCaptionVersion,
   isUniqueViolation,
   listCaptionsForContent,
@@ -60,6 +61,36 @@ describe('listCaptionsForContent', () => {
     const { client } = createMockClient({ captions });
 
     await expect(listCaptionsForContent(client, WS, CONTENT)).rejects.toBeInstanceOf(
+      CaptionRepositoryError,
+    );
+  });
+});
+
+describe('countCaptionsForContent', () => {
+  it('counts with a head query scoped to workspace AND content', async () => {
+    const captions = new MockQueryBuilder({ data: null, error: null, count: 7 });
+    const { client } = createMockClient({ captions });
+
+    expect(await countCaptionsForContent(client, WS, CONTENT)).toBe(7);
+    expect(eqFilters(captions)).toEqual({ workspace_id: WS, content_id: CONTENT });
+    expect(captions.calls.find((c) => c.method === 'select')?.args[1]).toEqual({
+      count: 'exact',
+      head: true,
+    });
+  });
+
+  it('treats a null count as zero rather than throwing', async () => {
+    const captions = new MockQueryBuilder({ data: null, error: null });
+    const { client } = createMockClient({ captions });
+
+    expect(await countCaptionsForContent(client, WS, CONTENT)).toBe(0);
+  });
+
+  it('wraps driver errors', async () => {
+    const captions = new MockQueryBuilder({ data: null, error: { code: 'x', message: 'x' } });
+    const { client } = createMockClient({ captions });
+
+    await expect(countCaptionsForContent(client, WS, CONTENT)).rejects.toBeInstanceOf(
       CaptionRepositoryError,
     );
   });

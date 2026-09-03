@@ -1,4 +1,5 @@
 import { AIError, type AIChatRequest, type AIProvider } from '@ai-content/ai';
+import { CAPTION_MAX_VERSIONS } from '@ai-content/shared/content/caption';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -104,11 +105,25 @@ function happyClient(
     content: new MockQueryBuilder({ data: CONTENT_ROW, error: null }),
     workspace_profiles: new MockQueryBuilder({ data: PROFILE_ROW, error: null }),
     captions: [
+      new MockQueryBuilder({ data: null, error: null, count: 2 }),
       new MockQueryBuilder({ data: { version: 2 }, error: null }),
       new MockQueryBuilder({ data: { ...SAVED, version: 3 }, error: null }),
     ],
     ...overrides,
   });
+}
+
+/**
+ * No caption row was written. Asserting on the builders the mock handed out
+ * rather than on `from('captions')` never being called, because generation now
+ * legitimately reads the table (the version-cap count) before deciding.
+ */
+function expectNoCaptionInsert(from: ReturnType<typeof vi.fn>) {
+  const inserted = from.mock.results
+    .map((r: { value: unknown }) => r.value as MockQueryBuilder)
+    .filter((b) => b?.calls?.some((c) => c.method === 'insert'));
+
+  expect(inserted).toEqual([]);
 }
 
 beforeEach(() => {
@@ -144,7 +159,7 @@ describe('generateCaption', () => {
 
     expect(state).toEqual({ error: 'You do not have access to this workspace.' });
     expect(factory).not.toHaveBeenCalled();
-    expect(from).not.toHaveBeenCalledWith('captions');
+    expectNoCaptionInsert(from);
     expect(refresh).not.toHaveBeenCalled();
   });
 
@@ -176,7 +191,7 @@ describe('generateCaption', () => {
 
     expect(state.notConfigured).toBe(true);
     expect(state.error).toBe('AI is not configured for this deployment.');
-    expect(from).not.toHaveBeenCalledWith('captions');
+    expectNoCaptionInsert(from);
     expect(refresh).not.toHaveBeenCalled();
   });
 
@@ -206,14 +221,18 @@ describe('generateCaption', () => {
 
     // Persisted through the repository, scoped to the verified ids.
     const captionCalls = from.mock.calls.filter((c: unknown[]) => c[0] === 'captions');
-    expect(captionCalls).toHaveLength(2);
+    expect(captionCalls).toHaveLength(3);
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it('records the model the router reported, not the one requested', async () => {
     const insert = new MockQueryBuilder({ data: SAVED, error: null });
     const { client } = happyClient({
-      captions: [new MockQueryBuilder({ data: null, error: null }), insert],
+      captions: [
+        new MockQueryBuilder({ data: null, error: null, count: 0 }),
+        new MockQueryBuilder({ data: null, error: null }),
+        insert,
+      ],
     });
     mocks.createServerClient.mockResolvedValue(client);
 
@@ -266,8 +285,41 @@ describe('generateCaption', () => {
     const state = await generateCaptionWith(() => ({ provider, model: 'm' }), WS, CONTENT_ID);
 
     expect(state).toEqual({ error: message });
-    expect(from).not.toHaveBeenCalledWith('captions');
+    expectNoCaptionInsert(from);
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('refuses to generate past the version cap, without calling the model', async () => {
+    const { client } = happyClient({
+      captions: [new MockQueryBuilder({ data: null, error: null, count: CAPTION_MAX_VERSIONS })],
+    });
+    mocks.createServerClient.mockResolvedValue(client);
+    const provider = okProvider();
+
+    const state = await generateCaptionWith(() => ({ provider, model: 'm' }), WS, CONTENT_ID);
+
+    // The cap must bite BEFORE the paid call: the disabled button is only a UI
+    // courtesy and a direct Server Action POST ignores it.
+    expect(provider.requests).toEqual([]);
+    expect(state.error).toMatch(new RegExp(`${CAPTION_MAX_VERSIONS} caption versions`));
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('still generates one below the cap', async () => {
+    const { client } = happyClient({
+      captions: [
+        new MockQueryBuilder({ data: null, error: null, count: CAPTION_MAX_VERSIONS - 1 }),
+        new MockQueryBuilder({ data: { version: CAPTION_MAX_VERSIONS - 1 }, error: null }),
+        new MockQueryBuilder({ data: SAVED, error: null }),
+      ],
+    });
+    mocks.createServerClient.mockResolvedValue(client);
+    const provider = okProvider();
+
+    const state = await generateCaptionWith(() => ({ provider, model: 'm' }), WS, CONTENT_ID);
+
+    expect(state).toEqual({});
+    expect(provider.requests).toHaveLength(1);
   });
 
   it('rejects an empty model reply instead of saving a blank caption', async () => {
@@ -281,13 +333,14 @@ describe('generateCaption', () => {
     );
 
     expect(state.error).toMatch(/empty caption/);
-    expect(from).not.toHaveBeenCalledWith('captions');
+    expectNoCaptionInsert(from);
   });
 
   it('retries the insert exactly once on a version race', async () => {
     const dup = { code: '23505', message: 'duplicate key' };
     const { client } = happyClient({
       captions: [
+        new MockQueryBuilder({ data: null, error: null, count: 1 }),
         new MockQueryBuilder({ data: { version: 1 }, error: null }),
         new MockQueryBuilder({ data: null, error: dup }),
         new MockQueryBuilder({ data: { version: 2 }, error: null }),
@@ -309,6 +362,7 @@ describe('generateCaption', () => {
   it('reports a save failure distinctly from a model failure', async () => {
     const { client } = happyClient({
       captions: [
+        new MockQueryBuilder({ data: null, error: null, count: 0 }),
         new MockQueryBuilder({ data: null, error: null }),
         new MockQueryBuilder({ data: null, error: { code: '42501', message: 'rls' } }),
       ],
@@ -336,7 +390,7 @@ describe('selectCaption', () => {
     const state = await selectCaption(WS, CONTENT_ID, CAPTION_ID, {}, FORM);
 
     expect(state).toEqual({ error: 'You do not have access to this workspace.' });
-    expect(from).not.toHaveBeenCalledWith('captions');
+    expectNoCaptionInsert(from);
   });
 
   it('archives then activates through the repository and refreshes', async () => {

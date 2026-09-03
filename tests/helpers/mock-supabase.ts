@@ -13,10 +13,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * method call so tests can assert *which filters were applied* — the actual
  * authorization behavior — not just the final return value.
  */
-export class MockQueryBuilder implements PromiseLike<{ data: unknown; error: unknown }> {
+export class MockQueryBuilder implements PromiseLike<{
+  data: unknown;
+  error: unknown;
+  count?: unknown;
+}> {
   public readonly calls: Array<{ method: string; args: unknown[] }> = [];
 
-  constructor(private readonly result: { data: unknown; error: unknown }) {}
+  constructor(private readonly result: { data: unknown; error: unknown; count?: number }) {}
 
   private record(method: string, args: unknown[]): this {
     this.calls.push({ method, args });
@@ -73,9 +77,14 @@ export class MockQueryBuilder implements PromiseLike<{ data: unknown; error: unk
     return Promise.resolve(this.result);
   }
 
-  then<TResult1 = { data: unknown; error: unknown }, TResult2 = never>(
+  then<TResult1 = { data: unknown; error: unknown; count?: unknown }, TResult2 = never>(
     onfulfilled?:
-      ((value: { data: unknown; error: unknown }) => TResult1 | PromiseLike<TResult1>) | null,
+      | ((value: {
+          data: unknown;
+          error: unknown;
+          count?: unknown;
+        }) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
     return Promise.resolve(this.result).then(onfulfilled, onrejected);

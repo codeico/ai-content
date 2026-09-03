@@ -1,7 +1,7 @@
 'use server';
 
 import { AIError, createAIProvider, type AIProvider } from '@ai-content/ai';
-import { CAPTION_BODY_MAX_LENGTH } from '@ai-content/shared/content/caption';
+import { CAPTION_BODY_MAX_LENGTH, CAPTION_MAX_VERSIONS } from '@ai-content/shared/content/caption';
 import { loadFutureProviderEnv } from '@ai-content/shared/env';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { buildCaptionMessages, CAPTION_PROMPT_VERSION } from '@/server/ai/caption-prompt';
 import {
   CaptionRepositoryError,
+  countCaptionsForContent,
   insertNextCaptionVersion,
   isUniqueViolation,
   selectCaptionAsActive,
@@ -137,6 +138,17 @@ export async function generateCaptionWith(
 
     if (!content) {
       return { error: 'Content not found.' };
+    }
+
+    // Bound total spend per content item before any paid call. Checked here,
+    // after authorization, so the ceiling is enforced for a direct Server
+    // Action POST too — the disabled button is only a UI courtesy.
+    const existingVersions = await countCaptionsForContent(supabase, workspaceId, contentId);
+
+    if (existingVersions >= CAPTION_MAX_VERSIONS) {
+      return {
+        error: `This content already has ${CAPTION_MAX_VERSIONS} caption versions. Select one, or start new content.`,
+      };
     }
 
     // Configuration is checked AFTER authorization so an outsider learns
