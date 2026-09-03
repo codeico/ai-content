@@ -625,6 +625,23 @@ SCORING
 DUPLICATE
 ```
 
+> **Implemented subset (Phases 3–7B).** The live `status` column stores three
+> lowercase values: `draft`, `ready`, `archived`. The other twelve are not
+> modelled because nothing can put a row into them — `VALIDATING`, `ANALYZING`
+> and `SCORING` need the job system, `SCHEDULED` and `PUBLISHING` need the
+> scheduler, `PUBLISHED` needs the Instagram publisher, and `DUPLICATE` needs
+> embeddings. A status value no code can produce is a lie in the schema, so
+> each arrives as a `check` widening in a new migration alongside the phase
+> that can reach it, never as a rewrite of an applied one.
+>
+> **Unsettled, and it should be settled before the scheduling phase:** whether
+> `SCHEDULED` and `PUBLISHED` belong in this column at all, or in
+> `scheduled_posts` / `published_posts` rows referencing the content. A content
+> item can be republished after a failure, and may publish to more than one
+> account over time; neither fits a single column on the content row. Deciding
+> this after real content exists means a data migration rather than an edit.
+> See `docs/PRODUCT_ALIGNMENT.md` §4.
+
 ---
 
 # 13. Content Rights Status
