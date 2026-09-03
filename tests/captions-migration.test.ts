@@ -120,3 +120,45 @@ describe('captions migration', () => {
     expect(code).not.toMatch(/alter table public\.workspace/);
   });
 });
+
+describe('the schema doc explains the omissions rather than hiding them', () => {
+  const SCHEMA = readFileSync(join(process.cwd(), 'docs/DATABASE_SCHEMA.md'), 'utf8');
+
+  /**
+   * The captions table lists model_provider, hashtags, call_to_action and
+   * generated_by in its column reference, but the migration ships none of
+   * them. That reads as an accidental drop unless the reasoning is written
+   * down - a reviewer flagged exactly that, and was only wrong because
+   * section 37 already records each one as a deliberate deferral.
+   *
+   * The code side is already gated (the migration must not contain
+   * model_provider). This gates the other direction: the doc must keep saying
+   * why, or the next reader re-opens a settled decision.
+   */
+  const DEFERRALS = ['model_provider', 'hashtags', 'call_to_action'];
+
+  it('has a section naming what is deliberately absent', () => {
+    expect(SCHEMA).toMatch(/Deliberately not modelled yet/);
+  });
+
+  it.each(DEFERRALS)('%s is listed as deferred, with a reason', (field) => {
+    const block = SCHEMA.slice(
+      SCHEMA.indexOf('Deliberately not modelled yet'),
+      SCHEMA.indexOf('`workspace_id` is denormalised'),
+    );
+
+    expect(block).toContain(field);
+  });
+
+  it('ties the model_provider omission to the vendor-neutrality rule', () => {
+    // Without this the omission looks like an oversight rather than a
+    // consequence of AI_ARCHITECTURE.
+    const block = SCHEMA.slice(
+      SCHEMA.indexOf('Deliberately not modelled yet'),
+      SCHEMA.indexOf('`workspace_id` is denormalised'),
+    );
+
+    expect(block).toMatch(/vendor-neutral/);
+    expect(block).toMatch(/AI_ARCHITECTURE/);
+  });
+});
