@@ -71,7 +71,11 @@ describe('the design system stays out of the client bundle', () => {
 
   it('both share one box style rather than drifting apart', () => {
     expect(UI).toMatch(/export const TEXTAREA_CLASS/);
-    expect(AUTO_GROW).toMatch(/TEXTAREA_CLASS/);
+    // Importing the constant is not the same as using it. Dropping it from
+    // the className left the import in place and the assertion passing, while
+    // the field lost its border, padding and focus ring.
+    expect(AUTO_GROW).toMatch(/import \{ TEXTAREA_CLASS \}/);
+    expect(AUTO_GROW).toMatch(/className=\{`\$\{TEXTAREA_CLASS\}/);
   });
 });
 

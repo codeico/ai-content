@@ -56,7 +56,16 @@ describe('a workspace with no content explains itself', () => {
 
   it('counts from the database, not from the page', () => {
     // counts.total stays right when the list is paginated or empty.
-    expect(WORKSPACE_PAGE).toMatch(/counts\.total === 0/);
+    expect(WORKSPACE_PAGE).toMatch(/countContentByStatus/);
+    // And the zero case must actually choose the empty state: replacing the
+    // condition with `false` left this matching while the list rendered an
+    // empty <ul> instead.
+    // Two separate zero-checks: the header meta line and the list itself.
+    // Mutating one left the other matching, so require both.
+    const zeroChecks = WORKSPACE_PAGE.match(/counts\.total === 0/g) ?? [];
+    expect(zeroChecks).toHaveLength(2);
+    expect(WORKSPACE_PAGE).toMatch(/counts\.total === 0 \? \(\s*<EmptyState/);
+    expect(WORKSPACE_PAGE).toMatch(/counts\.total === 0 \? \(?\s*'No content yet'/);
   });
 });
 

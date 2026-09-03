@@ -93,8 +93,11 @@ describe('dismissal follows the action result, not the click', () => {
 
 describe('the close handle crosses the server boundary safely', () => {
   it('travels by context, not as a prop', () => {
-    expect(SHEET).toMatch(/createContext/);
-    expect(SHEET).toMatch(/export function useSheet/);
+    // createContext also appears in the react import, so match the call that
+    // actually builds the context plus the hook that reads it.
+    expect(SHEET).toMatch(/const SheetContext = createContext</);
+    expect(SHEET).toMatch(/export function useSheet\(\)/);
+    expect(SHEET).toMatch(/useContext\(SheetContext\)/);
   });
 
   it('children stay serialisable', () => {
@@ -109,8 +112,15 @@ describe('the close handle crosses the server boundary safely', () => {
 
 describe('the sheet is a real dialog', () => {
   it('uses <dialog> so focus trapping and Escape come from the platform', () => {
-    expect(SHEET).toMatch(/<dialog/);
-    expect(SHEET).toMatch(/showModal\(\)/);
+    // Swapping <dialog> for a <div> loses focus trapping, background
+    // inertness and Escape, and nothing else in the file would complain.
+    // The opening tag and the closing tag must both be the real element.
+    // `<dialog>` also appears in the doc comment, so match the JSX: an
+    // indented opening tag and the matching close.
+    expect(SHEET).toMatch(/\n\s+<dialog\n/);
+    expect(SHEET).toMatch(/\n\s+<\/dialog>/);
+    expect(SHEET).toMatch(/ref\.current\?\.showModal\(\)/);
+    expect(SHEET).toMatch(/ref\.current\?\.close\(\)/);
   });
 
   it('names itself for assistive tech', () => {

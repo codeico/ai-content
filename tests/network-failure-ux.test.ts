@@ -34,7 +34,11 @@ describe('the boundary offers a way out', () => {
   });
 
   it('mentions the connection, which is the usual cause', () => {
-    expect(BOUNDARY).toMatch(/connection/i);
+    // "connection" also appears in the doc comment, so match the sentence the
+    // user actually reads.
+    const paragraph = BOUNDARY.slice(BOUNDARY.indexOf('<p'), BOUNDARY.indexOf('</p>'));
+
+    expect(paragraph).toMatch(/connection/i);
   });
 });
 
