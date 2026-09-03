@@ -16,7 +16,10 @@ import {
   STATUS_LABEL,
   StatusMark,
 } from '@/components/ui';
-import { listContentForWorkspace } from '@/server/repositories/content-repository';
+import {
+  countContentByStatus,
+  listContentForWorkspace,
+} from '@/server/repositories/content-repository';
 import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
 
@@ -24,17 +27,19 @@ import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server'
 
 interface WorkspacePageProps {
   params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export const metadata: Metadata = { title: 'Workspace' };
 
 /**
- * Workspace overview: the content list is the page. Status counts are derived
- * from the same rows (real data, nothing fabricated). Owner settings sit at the
- * bottom, out of the way of the daily task.
+ * Workspace overview: the content list is the page. Status counts come from the
+ * database so they describe the whole workspace, not the page in hand. Owner
+ * settings sit at the bottom, out of the way of the daily task.
  */
-export default async function WorkspacePage({ params }: WorkspacePageProps) {
+export default async function WorkspacePage({ params, searchParams }: WorkspacePageProps) {
   const { workspaceId } = await params;
+  const search = await searchParams;
 
   // A route param is untrusted input. A malformed id (not a UUID) cannot be a
   // real workspace, so reject it before it ever reaches a database query.
@@ -60,12 +65,25 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
 
   // Independent of each other and both already gated by the membership check
   // above, so they overlap instead of adding two round trips in series.
-  const [content, profile] = await Promise.all([
-    listContentForWorkspace(supabase, workspace.id),
+  // The cursor is a position in the list, not an offset. It is read from the
+  // query string so "load more" is a plain link that works without JS and can
+  // be shared or reloaded.
+  const cursor =
+    typeof search.after === 'string' && typeof search.afterId === 'string'
+      ? { created_at: search.after, id: search.afterId }
+      : null;
+
+  // All three are independent and already gated by the membership check above.
+  // Counts come from the database, not from tallying the page: once the list
+  // is paginated, counting rows in hand would report "3 drafts" for a
+  // workspace holding 300.
+  const [page, profile, counts] = await Promise.all([
+    listContentForWorkspace(supabase, workspace.id, { cursor }),
     getProfileForWorkspace(supabase, workspace.id),
+    countContentByStatus(supabase, workspace.id),
   ]);
-  const counts = { draft: 0, ready: 0, archived: 0 };
-  for (const item of content) counts[item.status]++;
+
+  const content = page.items;
 
   const canManage = workspace.role === 'owner';
   const roleLabel = canManage ? 'Owner' : 'Member';
@@ -90,11 +108,11 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
                 {roleLabel} · {profile.niche}
               </span>
             ) : null}
-            {content.length === 0 ? (
+            {counts.total === 0 ? (
               'No content yet'
             ) : (
               <span className="tabular">
-                {content.length} item{content.length === 1 ? '' : 's'}
+                {counts.total} item{counts.total === 1 ? '' : 's'}
                 {(['draft', 'ready', 'archived'] as const)
                   .filter((s) => counts[s] > 0)
                   .map((s) => (
@@ -115,7 +133,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
             Content
           </h2>
 
-          {content.length === 0 ? (
+          {counts.total === 0 ? (
             <EmptyState
               title="Nothing here yet"
               body="Add a title for the first piece of content. Everything starts as a draft."
@@ -142,6 +160,33 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
               ))}
             </ul>
           )}
+
+          {page.nextCursor ? (
+            <p className="mt-6">
+              {/* A plain link, not a button: it works without JS, survives a
+                  reload, and can be shared. */}
+              <ButtonLink
+                variant="secondary"
+                href={`/app/workspaces/${workspace.id}?after=${encodeURIComponent(
+                  page.nextCursor.created_at,
+                )}&afterId=${encodeURIComponent(page.nextCursor.id)}`}
+                className="w-full sm:w-auto"
+              >
+                Show older
+              </ButtonLink>
+            </p>
+          ) : null}
+
+          {cursor ? (
+            <p className="mt-4 text-[14px]">
+              <Link
+                href={`/app/workspaces/${workspace.id}`}
+                className="underline-offset-2 hover:underline"
+              >
+                Back to newest
+              </Link>
+            </p>
+          ) : null}
         </section>
 
         <aside className="flex flex-col gap-10">

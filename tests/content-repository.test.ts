@@ -37,7 +37,8 @@ describe('listContentForWorkspace', () => {
       { method: 'order', args: ['created_at', { ascending: false }] },
       { method: 'order', args: ['id', { ascending: false }] },
     ]);
-    expect(result).toEqual([ROW]);
+    expect(result.items).toEqual([ROW]);
+    expect(result.nextCursor).toBeNull();
   });
 
   it('wraps driver errors', async () => {

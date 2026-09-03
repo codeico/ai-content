@@ -43,6 +43,10 @@ export class MockQueryBuilder implements PromiseLike<{
     return this.record('neq', args);
   }
 
+  or(...args: unknown[]): this {
+    return this.record('or', args);
+  }
+
   limit(...args: unknown[]): this {
     return this.record('limit', args);
   }

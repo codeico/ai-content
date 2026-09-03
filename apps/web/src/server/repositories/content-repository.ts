@@ -44,22 +44,110 @@ export type Content = Omit<Tables<'content'>, 'status' | 'source_type' | 'media_
 const CONTENT_COLUMNS =
   'id, workspace_id, title, status, description, source_type, source_url, external_id, storage_provider, storage_key, media_status, created_at, updated_at';
 
+/**
+ * How many content rows one page request loads.
+ *
+ * The list was unbounded: every workspace page fetched every row a workspace
+ * had ever held, so page weight grew without limit and one busy workspace
+ * could dominate a request. A silent cap would be worse than unbounded — it
+ * hides rows the user knows exist — so this is paired with an explicit
+ * "load more" affordance and an exact total.
+ */
+export const CONTENT_PAGE_SIZE = 25;
+
+/** A position in the list, not an offset: the sort key of the last row seen. */
+export interface ContentCursor {
+  created_at: string;
+  id: string;
+}
+
+export interface ContentPage {
+  items: Content[];
+  /** Pass to the next call to continue; null when the list is exhausted. */
+  nextCursor: ContentCursor | null;
+}
+
+/**
+ * One page of content, newest first.
+ *
+ * Keyset, not offset: the ordering is (created_at desc, id desc) and
+ * content_workspace_id_created_at_idx matches it exactly, so each page is an
+ * index range scan whose cost does not grow with how deep the user has paged.
+ * Offset would re-scan every skipped row and can also skip or repeat items
+ * when a row is inserted mid-paging; a keyset cannot.
+ *
+ * `id` breaks ties so two rows created in the same millisecond still have a
+ * total order — without it a cursor could loop or drop rows.
+ */
 export async function listContentForWorkspace(
   supabase: ContentClient,
   workspaceId: string,
-): Promise<Content[]> {
-  const { data, error } = await supabase
+  options: { cursor?: ContentCursor | null; limit?: number } = {},
+): Promise<ContentPage> {
+  const limit = options.limit ?? CONTENT_PAGE_SIZE;
+
+  let query = supabase
     .from('content')
     .select(CONTENT_COLUMNS)
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
-    .order('id', { ascending: false });
+    .order('id', { ascending: false })
+    // One extra row answers "is there more?" without a second round trip.
+    .limit(limit + 1);
+
+  if (options.cursor) {
+    // Strictly after the cursor in (created_at desc, id desc) order.
+    query = query.or(
+      `created_at.lt.${options.cursor.created_at},and(created_at.eq.${options.cursor.created_at},id.lt.${options.cursor.id})`,
+    );
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new ContentRepositoryError('Unable to list content.', error);
   }
 
-  return data as Content[];
+  const rows = data as Content[];
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const last = items.at(-1);
+
+  return {
+    items,
+    nextCursor: hasMore && last ? { created_at: last.created_at, id: last.id } : null,
+  };
+}
+
+/**
+ * Status totals for the whole workspace.
+ *
+ * Counted in the database, never by tallying a page: once the list is
+ * paginated, counting the rows in hand would silently report "3 drafts" for a
+ * workspace holding 300. Selects only the status column so the payload stays
+ * small even for a large workspace.
+ */
+export async function countContentByStatus(
+  supabase: ContentClient,
+  workspaceId: string,
+): Promise<{ total: number; draft: number; ready: number; archived: number }> {
+  const { data, error } = await supabase
+    .from('content')
+    .select('status')
+    .eq('workspace_id', workspaceId);
+
+  if (error) {
+    throw new ContentRepositoryError('Unable to count content.', error);
+  }
+
+  const rows = data as { status: ContentStatus }[];
+  const counts = { total: rows.length, draft: 0, ready: 0, archived: 0 };
+
+  for (const row of rows) {
+    counts[row.status] += 1;
+  }
+
+  return counts;
 }
 
 /** `null` for both "does not exist" and "not in this workspace" — indistinguishable on purpose. */

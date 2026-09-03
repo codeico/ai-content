@@ -125,8 +125,10 @@ describe('updateContentSourceInWorkspace', () => {
 
 describe('content repository surface', () => {
   it('exposes no function that can reach content without a workspace id', () => {
-    const fns = Object.entries(repository).filter(
-      ([, value]) => typeof value === 'function' && value !== ContentRepositoryError,
+    const fns = Object.entries(repository).flatMap(([name, value]) =>
+      typeof value === 'function' && value !== ContentRepositoryError
+        ? [[name, value] as [string, (...args: unknown[]) => unknown]]
+        : [],
     );
     expect(fns.length).toBeGreaterThan(0);
     for (const [name, fn] of fns) {
