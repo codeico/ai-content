@@ -834,6 +834,31 @@ ACTIVE
 
 per content.
 
+> **Implemented subset (Phase 7B).** Live in
+> `20260903130000_create_captions.sql`: `id`, `content_id`, `workspace_id`,
+> `version`, `body`, `status`, `model_name`, `prompt_version`, `created_by`,
+> `created_at`, `updated_at`. Both recommendations above are enforced:
+> `UNIQUE(content_id, version)` and a partial unique index on
+> `(content_id) WHERE status = 'active'`.
+>
+> Deliberately not modelled yet:
+>
+> - `model_provider` — the AI layer is vendor-neutral by rule
+>   (`docs/AI_ARCHITECTURE.md`), so a provider label would either name the
+>   endpoint or be a constant. `model_name` plus `prompt_version` already give
+>   the reproducibility CODING_RULES §25 asks for.
+> - structured `hashtags` / `call_to_action` — captions are stored as one body
+>   until publishing needs the parts separately.
+> - token usage and latency — no consumer exists; cost tracking is its own
+>   phase.
+>
+> `workspace_id` is denormalised for a direct RLS predicate rather than a join
+> through `content`, matching every other table. It cannot drift: a composite
+> FK `(content_id, workspace_id) → content(id, workspace_id)` makes attaching a
+> caption to another workspace's content a database error, not a policy
+> question. Access follows **content** (any workspace member may generate and
+> select), not the owner-only `workspace_profiles`.
+
 ---
 
 # 18. posting_schedules

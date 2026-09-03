@@ -6,10 +6,10 @@ A PWA for managing several Instagram accounts — each with its own niche, conte
 strategy, and AI personality — from a single place. Content discovery, AI analysis,
 caption generation, scheduling, and publishing are handled per workspace.
 
-> **Project status: Phases 0–7A complete — authentication, workspaces, content
+> **Project status: Phases 0–7B complete — authentication, workspaces, content
 > domain, AI router foundation, mobile-first frontend, content source/media
-> foundation, and the workspace AI profile.** AI analysis, background jobs,
-> scheduling, and publishing are
+> foundation, the workspace AI profile, and AI caption generation.** Background
+> jobs, scheduling, and publishing are
 > delivered by later phases; see [Implemented vs Planned](#implemented-vs-planned).
 
 ## Technology Stack
@@ -122,7 +122,7 @@ All of the above are expected to pass before a phase is considered complete.
 
 ## Implemented vs Planned
 
-**Implemented (Phases 0–7A)**
+**Implemented (Phases 0–7B)**
 
 - npm workspace structure, Next.js App Router shell, TypeScript strict mode
 - ESLint, Prettier, Vitest; environment validation with runtime/server/AI separation
@@ -132,19 +132,22 @@ All of the above are expected to pass before a phase is considered complete.
   via `workspace_ids_for_current_user()`
 - Content domain: `content` with status lifecycle, workspace-scoped repositories,
   validated Server Actions
-- AI router foundation: `packages/ai` provider abstraction (not yet called by any
-  feature)
+- AI router foundation: `packages/ai` provider abstraction, called by caption
+  generation
 - Mobile-first frontend for workspaces and content
 - Content source and media foundation: neutral `source_type`, `source_url`,
   `external_id`, object-storage reference pair, and `media_status` lifecycle
 - Workspace AI profile: `workspace_profiles` holding niche, description,
   audience, tone, writing style, goals, and restrictions. Owner-editable,
-  member-readable. Stored as configuration for later AI features; nothing reads
-  it for generation yet
+  member-readable, and used as the context for caption generation
+- AI caption generation: versioned `captions` per content item, written from the
+  title, source, and workspace AI profile. Regenerating appends a version and
+  never overwrites; exactly one version can be active. Requires `AI_ROUTER_*`;
+  without it the section states plainly that AI is not configured
 
 **Planned (later phases)**
 
-AI analysis and captions, background jobs, scheduling, content discovery, media
+AI analysis and scoring, background jobs, scheduling, content discovery, media
 processing, Instagram publishing, PWA and push notifications, observability, and
 security hardening. The order is defined in `docs/IMPLEMENTATION_ROADMAP.md`.
 
