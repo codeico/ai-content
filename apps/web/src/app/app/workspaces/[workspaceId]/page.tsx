@@ -208,7 +208,12 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
                 </p>
               </div>
               <RenameWorkspaceForm action={boundUpdateWorkspace} currentName={workspace.name} />
-              <DeleteWorkspaceButton action={boundDeleteWorkspace} workspaceName={workspace.name} />
+              <DeleteWorkspaceButton
+                action={boundDeleteWorkspace}
+                workspaceName={workspace.name}
+                contentCount={counts.total}
+                hasProfile={profile !== null}
+              />
             </section>
           ) : (
             <div className="border-t border-line pt-5 text-[14px] text-ink-soft">

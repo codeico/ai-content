@@ -297,7 +297,11 @@ export default async function ContentPage({ params }: ContentPageProps) {
           </dl>
 
           <div className="border-t border-line pt-5">
-            <DeleteContentButton action={boundDeleteContent} title={content.title} />
+            <DeleteContentButton
+              action={boundDeleteContent}
+              title={content.title}
+              captionCount={captions.length}
+            />
           </div>
         </aside>
       </div>
