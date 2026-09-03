@@ -200,3 +200,24 @@ describe('a forgotten cache bump stays harmless', () => {
     expect(versionDoc).toMatch(/content-hashed/);
   });
 });
+
+describe('the install survives a change of start URL', () => {
+  it('pins an explicit id', () => {
+    // Without id the install is keyed on start_url. Change start_url later
+    // and the browser treats it as a different app: existing installs are
+    // orphaned and the user gets a second icon instead of an update.
+    expect(MANIFEST).toMatch(/id: '\/app'/);
+  });
+
+  it('declares a scope that covers the auth screens', () => {
+    // Navigating outside scope opens a browser tab on top of the installed
+    // app. Login and signup are part of the flow, so scope is the origin.
+    expect(MANIFEST).toMatch(/scope: '\/'/);
+  });
+
+  it('does not lock the orientation', () => {
+    // Forcing portrait breaks landscape use and anyone relying on a rotated
+    // device. The layout already handles both.
+    expect(MANIFEST).not.toMatch(/orientation:/);
+  });
+});
