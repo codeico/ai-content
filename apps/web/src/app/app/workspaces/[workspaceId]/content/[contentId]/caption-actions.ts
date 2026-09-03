@@ -2,7 +2,7 @@
 
 import { AIError, createAIProvider, type AIProvider } from '@ai-content/ai';
 import { CAPTION_BODY_MAX_LENGTH, CAPTION_MAX_VERSIONS } from '@ai-content/shared/content/caption';
-import { loadFutureProviderEnv } from '@ai-content/shared/env';
+import { EnvValidationError, loadFutureProviderEnv } from '@ai-content/shared/env';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -84,12 +84,28 @@ function describeAIError(error: AIError): CaptionActionState {
  * for a manual, single-item call.
  */
 function defaultProvider(): { provider: AIProvider; model: string } {
-  const { AI_ROUTER_MODEL: model } = loadFutureProviderEnv(process.env);
-  const provider = createAIProvider(process.env, { timeoutMs: CAPTION_TIMEOUT_MS, maxRetries: 1 });
+  // A malformed AI_ROUTER_BASE_URL makes loadFutureProviderEnv throw
+  // EnvValidationError, which is a configuration fault like any other missing
+  // variable — not an unexpected crash. Left unmapped it escaped the action's
+  // catch as a 500, defeating the honest not-configured state this feature
+  // depends on. Deployment configuration is never echoed to the user.
+  let model: string | undefined;
+
+  try {
+    ({ AI_ROUTER_MODEL: model } = loadFutureProviderEnv(process.env));
+  } catch (error) {
+    if (error instanceof EnvValidationError) {
+      throw new AIError('not_configured', 'AI Router configuration is invalid.', undefined, error);
+    }
+
+    throw error;
+  }
 
   if (!model) {
     throw new AIError('not_configured', 'AI Router is not configured: missing AI_ROUTER_MODEL.');
   }
+
+  const provider = createAIProvider(process.env, { timeoutMs: CAPTION_TIMEOUT_MS, maxRetries: 1 });
 
   return { provider, model };
 }

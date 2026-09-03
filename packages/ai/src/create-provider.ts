@@ -1,4 +1,4 @@
-import { loadFutureProviderEnv, type EnvSource } from '@ai-content/shared/env';
+import { EnvValidationError, loadFutureProviderEnv, type EnvSource } from '@ai-content/shared/env';
 
 import { OpenAICompatibleProvider } from './openai-compatible-provider.ts';
 import { AIError, type AIProvider } from './provider.ts';
@@ -30,7 +30,22 @@ export function createAIProvider(
     );
   }
 
-  const { AI_ROUTER_BASE_URL: baseUrl, AI_ROUTER_API_KEY: apiKey } = loadFutureProviderEnv(source);
+  // A malformed value (e.g. a typo'd base URL) is a configuration fault in the
+  // same class as a missing one, so it surfaces as not_configured rather than
+  // escaping as an unexpected error every caller would have to know about.
+  // The underlying issues are kept on `cause` for logs, never in the message.
+  let baseUrl: string | undefined;
+  let apiKey: string | undefined;
+
+  try {
+    ({ AI_ROUTER_BASE_URL: baseUrl, AI_ROUTER_API_KEY: apiKey } = loadFutureProviderEnv(source));
+  } catch (error) {
+    if (error instanceof EnvValidationError) {
+      throw new AIError('not_configured', 'AI Router configuration is invalid.', undefined, error);
+    }
+
+    throw error;
+  }
 
   if (!baseUrl || !apiKey) {
     const missing = [!baseUrl && 'AI_ROUTER_BASE_URL', !apiKey && 'AI_ROUTER_API_KEY'].filter(
