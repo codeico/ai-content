@@ -101,11 +101,37 @@ export interface NewCaption {
  * Inserts the next version for a content row. The version is computed as
  * MAX(version) + 1 in the application, per this codebase's rule that logic is
  * explicit in repositories; the UNIQUE(content_id, version) constraint turns a
- * concurrent double-generate into a unique_violation, which the caller may
- * retry once. `workspace_id` and `content_id` come from the verified
- * arguments, never from the caption payload.
+ * concurrent double-generate into a unique_violation.
+ *
+ * The retry lives here rather than at the call sites because losing a race is
+ * a property of this function, not of any one caller. `generateCaption` used
+ * to retry and `editCaption` did not, so a lost race threw away text the user
+ * had typed while a re-generatable model output was recovered — exactly
+ * backwards.
+ *
+ * Retried once: a second collision means sustained concurrent writes to one
+ * content row, and re-reading MAX forever would be a livelock, not a fix.
+ * `workspace_id` and `content_id` come from the verified arguments, never from
+ * the caption payload.
  */
 export async function insertNextCaptionVersion(
+  supabase: CaptionClient,
+  workspaceId: string,
+  contentId: string,
+  caption: NewCaption,
+): Promise<Caption> {
+  try {
+    return await insertAtNextVersion(supabase, workspaceId, contentId, caption);
+  } catch (error) {
+    if (error instanceof CaptionRepositoryError && isUniqueViolation(error.cause)) {
+      return insertAtNextVersion(supabase, workspaceId, contentId, caption);
+    }
+    throw error;
+  }
+}
+
+/** One attempt: read the current MAX(version), insert at MAX + 1. */
+async function insertAtNextVersion(
   supabase: CaptionClient,
   workspaceId: string,
   contentId: string,

@@ -142,9 +142,16 @@ describe('insertNextCaptionVersion', () => {
   });
 
   it('surfaces a unique violation as a repository error the caller can detect', async () => {
+    // Both attempts lose: the retry is inside insertNextCaptionVersion, so a
+    // collision that survives it must still reach the caller as 23505.
     const latest = new MockQueryBuilder({ data: { version: 1 }, error: null });
     const insert = new MockQueryBuilder({ data: null, error: { code: '23505', message: 'dup' } });
-    const { client } = createMockClient({ captions: [latest, insert] });
+    const retryLatest = new MockQueryBuilder({ data: { version: 2 }, error: null });
+    const retryInsert = new MockQueryBuilder({
+      data: null,
+      error: { code: '23505', message: 'dup' },
+    });
+    const { client } = createMockClient({ captions: [latest, insert, retryLatest, retryInsert] });
 
     let caught: unknown;
     try {

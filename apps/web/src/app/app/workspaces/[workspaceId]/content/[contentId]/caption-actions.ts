@@ -18,7 +18,6 @@ import {
   getCaptionInContent,
   insertEditedCaptionVersion,
   insertNextCaptionVersion,
-  isUniqueViolation,
   selectCaptionAsActive,
 } from '@/server/repositories/caption-repository';
 import { getContentInWorkspace } from '@/server/repositories/content-repository';
@@ -213,17 +212,9 @@ export async function generateCaptionWith(
       created_by: user.id,
     };
 
-    try {
-      await insertNextCaptionVersion(supabase, workspaceId, contentId, caption);
-    } catch (error) {
-      // Two generates raced for the same version number. The model output is
-      // good; only the version was taken. One retry re-reads MAX and inserts.
-      if (error instanceof CaptionRepositoryError && isUniqueViolation(error.cause)) {
-        await insertNextCaptionVersion(supabase, workspaceId, contentId, caption);
-      } else {
-        throw error;
-      }
-    }
+    // A version collision from a concurrent generate is retried inside
+    // insertNextCaptionVersion, so every caller gets that behaviour.
+    await insertNextCaptionVersion(supabase, workspaceId, contentId, caption);
   } catch (error) {
     if (error instanceof AIError) {
       return describeAIError(error);
