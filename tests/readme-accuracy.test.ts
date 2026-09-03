@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -81,5 +81,41 @@ describe('README claims match the code', () => {
     expect(implemented).not.toMatch(/Instagram publishing/i);
     expect(implemented).not.toMatch(/media processing/i);
     expect(implemented).not.toMatch(/background jobs/i);
+  });
+});
+
+describe('the README does not claim the PWA before it exists', () => {
+  it('claims an installable PWA only while the worker and manifest fields exist', () => {
+    expect(README).toMatch(/Installable PWA/);
+
+    // The three things that make the claim true, not just the word "PWA".
+    expect(existsSync(join(process.cwd(), 'apps/web/public/sw.js'))).toBe(true);
+    expect(source('apps/web/src/app/manifest.ts')).toMatch(/id: '\/app'/);
+    expect(existsSync(join(process.cwd(), 'apps/web/public/icon-maskable-512.png'))).toBe(true);
+  });
+
+  it('claims an offline fallback only while the page exists', () => {
+    expect(README).toMatch(/offline fallback/i);
+    expect(existsSync(join(process.cwd(), 'apps/web/src/app/offline/page.tsx'))).toBe(true);
+  });
+
+  it('claims the bottom navigation only while it has three tabs', () => {
+    expect(README).toMatch(/three-tab bottom\s+navigation/);
+
+    const nav = source('apps/web/src/components/app-nav.tsx');
+    const tabs = nav.match(/\{ key: '/g) ?? [];
+    expect(tabs).toHaveLength(3);
+  });
+
+  it('stops listing the PWA as planned', () => {
+    const planned = README.slice(README.indexOf('**Planned (later phases)**'));
+
+    // Listing a shipped feature as planned is the same defect as the reverse.
+    expect(planned).not.toMatch(/\bPWA\b/);
+  });
+
+  it('records the Instagram storage prerequisite where someone planning would look', () => {
+    expect(README).toMatch(/INSTAGRAM_FEASIBILITY/);
+    expect(existsSync(join(process.cwd(), 'docs/INSTAGRAM_FEASIBILITY.md'))).toBe(true);
   });
 });

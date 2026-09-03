@@ -6,7 +6,7 @@ A PWA for managing several Instagram accounts — each with its own niche, conte
 strategy, and AI personality — from a single place. Content discovery, AI analysis,
 caption generation, scheduling, and publishing are handled per workspace.
 
-> **Project status: Phases 0–7B complete — authentication, workspaces, content
+> **Project status: Phases 0–7B complete, plus the PWA shell — authentication, workspaces, content
 > domain, AI router foundation, mobile-first frontend, content source/media
 > foundation, the workspace AI profile, and AI caption generation.** Background
 > jobs, scheduling, and publishing are
@@ -153,12 +153,24 @@ All of the above are expected to pass before a phase is considered complete.
   drift and an edited one is recorded as written by hand rather than by a model
 - Paginated content list: keyset cursor (25 per page) with an explicit "Show
   older" link and a true workspace total, so nothing is silently hidden
+- Mobile app shell: contextual top bar with a routed Back, a three-tab bottom
+  navigation (Workspaces, Content, Account), bottom sheets for every create and
+  edit form, and a cross-workspace Content screen ordered by recency of work
+- Installable PWA: manifest with a pinned `id`, scope, and a maskable icon; an
+  app-shell service worker with an offline fallback. The worker caches only
+  identity-free assets — content-hashed build output and four static files —
+  and never page HTML, because authorisation here is decided per request
 
 **Planned (later phases)**
 
 AI analysis and scoring, background jobs, scheduling, content discovery, media
-processing, Instagram publishing, PWA and push notifications, observability, and
+processing, Instagram publishing, push notifications, observability, and
 security hardening. The order is defined in `docs/IMPLEMENTATION_ROADMAP.md`.
+
+Instagram publishing has one researched constraint worth knowing before it is
+scheduled: Meta fetches media from a public URL rather than accepting an upload,
+so object storage is a prerequisite for that phase rather than an optional
+extra. See `docs/INSTAGRAM_FEASIBILITY.md`.
 
 Database changes are made only through new files in `supabase/migrations/`;
 applied migrations are never edited. The Supabase CLI is pinned as a
