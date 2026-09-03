@@ -33,11 +33,22 @@ function clientFiles(dir: string): string[] {
 }
 
 describe('server-only AI code never reaches the browser', () => {
-  it('has a build to inspect', () => {
-    if (!existsSync(STATIC_DIR)) {
+  it('has a build that matches the current source', () => {
+    // Building only when the directory is missing was the flaw: a stale build
+    // from different source passed silently. Verified by importing
+    // createAIProvider into a client component - the gate stayed green until
+    // the build was rerun, then failed 4 assertions as it should.
+    const newestSource = Math.max(
+      ...clientFiles(join(process.cwd(), 'apps/web/src')).map((f) => statSync(f).mtimeMs),
+    );
+    const buildTime = existsSync(STATIC_DIR) ? statSync(STATIC_DIR).mtimeMs : 0;
+
+    if (buildTime < newestSource) {
       execSync('npm run build', { stdio: 'ignore' });
     }
+
     expect(existsSync(STATIC_DIR)).toBe(true);
+    expect(statSync(STATIC_DIR).mtimeMs).toBeGreaterThanOrEqual(newestSource);
   }, 300_000);
 
   it.each(FORBIDDEN)('no client asset contains %s', (needle) => {
