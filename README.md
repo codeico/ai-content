@@ -140,10 +140,19 @@ All of the above are expected to pass before a phase is considered complete.
 - Workspace AI profile: `workspace_profiles` holding niche, description,
   audience, tone, writing style, goals, and restrictions. Owner-editable,
   member-readable, and used as the context for caption generation
+- Content description: an author-written summary of what the content is about,
+  used as caption prompt input. Without it a caption can only be written from a
+  title, and the prompt forbids inventing anything else
 - AI caption generation: versioned `captions` per content item, written from the
-  title, source, and workspace AI profile. Regenerating appends a version and
-  never overwrites; exactly one version can be active. Requires `AI_ROUTER_*`;
-  without it the section states plainly that AI is not configured
+  title, description, source, and workspace AI profile. Regenerating appends a
+  version and never overwrites; exactly one version can be active, capped at 20
+  per item so generation cannot loop paid calls. Requires `AI_ROUTER_*`; without
+  it the section states plainly that AI is not configured
+- Caption editing: an edit is saved as a new version, never a rewrite. Caption
+  provenance and body are write-once in the database, so a chosen caption cannot
+  drift and an edited one is recorded as written by hand rather than by a model
+- Paginated content list: keyset cursor (25 per page) with an explicit "Show
+  older" link and a true workspace total, so nothing is silently hidden
 
 **Planned (later phases)**
 
