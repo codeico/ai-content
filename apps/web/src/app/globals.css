@@ -133,8 +133,13 @@
   /*
    * Bottom sheet. Pinned to the bottom edge on a phone so it reads as having
    * come from there; centred like an ordinary dialog once there is room.
+   *
+   * Scoped to [open]: a bare `.sheet { display: flex }` overrides the
+   * user-agent `dialog:not([open]) { display: none }`, which left the closed
+   * sheet occupying the full viewport and its heading in the accessibility
+   * tree, so every screen announced its sheet title twice.
    */
-  .sheet {
+  .sheet[open] {
     height: 100dvh;
     max-height: 100dvh;
     display: flex;

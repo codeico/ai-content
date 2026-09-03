@@ -120,7 +120,10 @@ describe('the sheet fits a phone', () => {
   });
 
   it('is bounded by the dynamic viewport height', () => {
-    const sheet = CSS.slice(CSS.indexOf('.sheet {'), CSS.indexOf('}', CSS.indexOf('.sheet {')));
+    const sheet = CSS.slice(
+      CSS.indexOf('.sheet[open] {'),
+      CSS.indexOf('}', CSS.indexOf('.sheet[open] {')),
+    );
 
     expect(sheet).toMatch(/max-height:\s*100dvh/);
   });
@@ -159,5 +162,21 @@ describe('the content screen leads with what it is for', () => {
   it('names the source trigger for what it does', () => {
     // "Edit source" on content with no source invites a user to edit nothing.
     expect(PAGE).toMatch(/'Add a source'/);
+  });
+});
+
+describe('a closed sheet takes up no space and says nothing', () => {
+  it('scopes the sheet layout to [open]', () => {
+    // Found on an empty workspace at 320px: a bare `.sheet { display: flex }`
+    // overrides the user-agent `dialog:not([open]) { display: none }`. The
+    // closed sheet was 568px tall - the whole viewport - and its <h2> stayed
+    // in the accessibility tree, so the screen read "New content" twice: once
+    // for the trigger, once for the hidden sheet title.
+    expect(CSS).toMatch(/\.sheet\[open\]\s*\{[\s\S]{0,200}display:\s*flex/);
+  });
+
+  it('does not style the sheet unconditionally', () => {
+    // `.sheet {` without [open] is the regression.
+    expect(CSS).not.toMatch(/\n\s*\.sheet\s*\{/);
   });
 });
