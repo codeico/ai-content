@@ -6,6 +6,7 @@ import { loadFutureProviderEnv } from '@ai-content/shared/env';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { isCaptionId, isContentId, isWorkspaceId } from '@/server/action-ids';
 import { buildCaptionMessages, CAPTION_PROMPT_VERSION } from '@/server/ai/caption-prompt';
 import {
   CaptionRepositoryError,
@@ -124,6 +125,10 @@ export async function generateCaptionWith(
     redirect('/login');
   }
 
+  if (!isWorkspaceId(workspaceId) || !isContentId(contentId)) {
+    return { error: NO_ACCESS };
+  }
+
   try {
     const supabase = await createServerClient();
 
@@ -227,6 +232,10 @@ export async function selectCaption(
 
   if (!user) {
     redirect('/login');
+  }
+
+  if (!isWorkspaceId(workspaceId) || !isContentId(contentId) || !isCaptionId(captionId)) {
+    return { error: NO_ACCESS };
   }
 
   let selected;

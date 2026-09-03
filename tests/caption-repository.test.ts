@@ -17,7 +17,7 @@ import { createMockClient, MockQueryBuilder } from './helpers/mock-supabase.ts';
  * value. Live RLS behaviour is verified against Supabase separately.
  */
 const WS = '550e8400-e29b-41d4-a716-446655440000';
-const CONTENT = '6f9619ff-8b86-d011-b42d-00c04fc964ff';
+const CONTENT = '6f9619ff-8b86-4d11-842d-00c04fc964ff';
 const CAPTION = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const USER = 'user-1';
 

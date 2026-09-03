@@ -5,6 +5,7 @@ import {
   validateWorkspaceProfile,
   type WorkspaceProfileFieldErrors,
 } from '@ai-content/shared/workspace/profile';
+import { isWorkspaceId, NO_ACCESS as INVALID_WORKSPACE } from '@/server/action-ids';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -113,6 +114,10 @@ export async function updateWorkspace(
     redirect('/login');
   }
 
+  if (!isWorkspaceId(workspaceId)) {
+    return { error: INVALID_WORKSPACE };
+  }
+
   const parsed = validateWorkspaceName({ name: formData.get('name') });
 
   if (!parsed.success) {
@@ -159,6 +164,12 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
     redirect('/login');
   }
 
+  // Void action: a bad id cannot be reported, so send the caller back to the
+  // list exactly as a non-member deletion attempt already does.
+  if (!isWorkspaceId(workspaceId)) {
+    redirect('/app');
+  }
+
   const supabase = await createServerClient();
 
   let deleted: boolean;
@@ -198,6 +209,10 @@ export async function updateWorkspaceProfile(
 
   if (!user) {
     redirect('/login');
+  }
+
+  if (!isWorkspaceId(workspaceId)) {
+    return { error: INVALID_WORKSPACE };
   }
 
   const parsed = validateWorkspaceProfile({

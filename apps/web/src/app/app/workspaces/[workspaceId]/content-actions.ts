@@ -7,6 +7,7 @@ import {
   type ContentFieldErrors,
   type ContentSourceFieldErrors,
 } from '@ai-content/shared/content';
+import { isContentId, isWorkspaceId } from '@/server/action-ids';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -54,6 +55,10 @@ export async function createContent(
     redirect('/login');
   }
 
+  if (!isWorkspaceId(workspaceId)) {
+    return { error: NO_ACCESS };
+  }
+
   const parsed = validateCreateContent({ title: formData.get('title') });
 
   if (!parsed.success) {
@@ -91,6 +96,10 @@ export async function updateContent(
 
   if (!user) {
     redirect('/login');
+  }
+
+  if (!isWorkspaceId(workspaceId) || !isContentId(contentId)) {
+    return { error: NO_ACCESS };
   }
 
   const parsed = validateUpdateContent({
@@ -146,6 +155,10 @@ export async function updateContentSource(
 
   if (!user) {
     redirect('/login');
+  }
+
+  if (!isWorkspaceId(workspaceId) || !isContentId(contentId)) {
+    return { error: NO_ACCESS };
   }
 
   const parsed = validateUpdateContentSource({
@@ -208,6 +221,11 @@ export async function deleteContent(workspaceId: string, contentId: string): Pro
 
   if (!user) {
     redirect('/login');
+  }
+
+  // Void action: mirror the existing not-found redirect rather than reporting.
+  if (!isWorkspaceId(workspaceId) || !isContentId(contentId)) {
+    redirect('/app');
   }
 
   const detailPath = `/app/workspaces/${workspaceId}/content/${contentId}`;
