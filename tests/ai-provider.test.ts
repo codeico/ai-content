@@ -208,11 +208,21 @@ describe('errors', () => {
     }
   });
 
-  it('maps a fetch rejection to network', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('fetch failed'));
+  it('maps a fetch rejection to network and strips the URL and socket details from cause', async () => {
+    const driverError = new TypeError('fetch failed');
+    (driverError as Error & { cause?: unknown }).cause = {
+      code: 'ECONNREFUSED',
+      address: '127.0.0.1',
+      port: 11434,
+      message: 'connect ECONNREFUSED 127.0.0.1:11434 https://ai.example.test/v1/chat/completions',
+    };
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(driverError);
     const error = await fail(provider(fetchMock).chat(REQUEST));
     expect(error.code).toBe('network');
-    expect(error.cause).toBeInstanceOf(TypeError);
+    expect(error.cause).toEqual({ name: 'TypeError', code: 'ECONNREFUSED' });
+    expect(JSON.stringify(error.cause)).not.toContain('ai.example.test');
+    expect(JSON.stringify(error.cause)).not.toContain('127.0.0.1');
+    expect(error.message).not.toContain('ai.example.test');
   });
 
   it('aborts and maps to timeout when the endpoint hangs', async () => {

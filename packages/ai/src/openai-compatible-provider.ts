@@ -109,9 +109,15 @@ export class OpenAICompatibleProvider implements AIProvider {
       if (controller.signal.aborted) {
         throw new AIError('timeout', `AI request timed out after ${this.timeoutMs}ms.`);
       }
-      // Driver errors can embed the request URL but never the headers; the
-      // message is still replaced so nothing upstream-shaped reaches callers.
-      throw new AIError('network', 'AI request failed to reach the endpoint.', undefined, error);
+      // Driver errors can embed the request URL (and undici chains a nested
+      // `cause` with socket details). Keep only the error's name and code for
+      // diagnosis; nothing upstream-shaped, including the URL, reaches callers.
+      throw new AIError(
+        'network',
+        'AI request failed to reach the endpoint.',
+        undefined,
+        describeNetworkFailure(error),
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -159,6 +165,25 @@ export class OpenAICompatibleProvider implements AIProvider {
       }),
     };
   }
+}
+
+/**
+ * Reduces a fetch/driver failure to a URL-free, header-free summary. Node's
+ * undici errors carry the request URL in `message` and a nested `cause` with
+ * host/port; neither belongs in an error that may be logged by callers.
+ */
+export function describeNetworkFailure(error: unknown): { name: string; code?: string } {
+  if (!(error instanceof Error)) {
+    return { name: typeof error };
+  }
+  const code = errorCode(error.cause) ?? errorCode(error);
+  return code ? { name: error.name, code } : { name: error.name };
+}
+
+function errorCode(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const code = (value as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
 }
 
 function httpError(response: Response): AIError {
