@@ -31,9 +31,10 @@ describe('the lesson is written down', () => {
     expect(RULES).toMatch(/existence\s+assertion is not a gate/);
   });
 
-  it('says a surviving mutation means the test is wrong', () => {
-    // The tempting reading is "the mutation was harmless". It is not.
-    expect(RULES).toMatch(/mutation that survives means the test is\s+wrong/);
+  it('says a surviving mutation usually means the test is wrong', () => {
+    // Softened from "means" to "usually means" after four survivors turned
+    // out to be broken mutations; the gate correctly caught the change.
+    expect(RULES).toMatch(/mutation that survives usually means the test is\s+wrong/);
   });
 });
 
@@ -80,4 +81,31 @@ describe('no gate file is empty of assertions', () => {
       expect(code).toMatch(/expect\(/);
     },
   );
+});
+
+describe('the audit lessons stay recorded', () => {
+  const RULES_TEXT = readFileSync(join(process.cwd(), 'docs/CODING_RULES.md'), 'utf8');
+
+  it('warns that a survivor can be a broken mutation', () => {
+    // Four "survivors" in the audit were mis-aimed mutations. Hardening a
+    // correct test wastes time and clutters the suite.
+    expect(RULES_TEXT).toMatch(/diagnose before tightening/i);
+  });
+
+  it('records the derived-artefact failure mode', () => {
+    // A gate reading a build output can pass against a stale copy.
+    expect(RULES_TEXT).toMatch(/DERIVED artefact/);
+    expect(RULES_TEXT).toMatch(/freshness has to be asserted/);
+  });
+
+  it('the bundle gate asserts its build is current', () => {
+    const bundleGate = readFileSync(
+      join(process.cwd(), 'tests/client-bundle-secrets.test.ts'),
+      'utf8',
+    );
+
+    // Building only when the directory is missing was the original flaw.
+    expect(bundleGate).toMatch(/newestSource/);
+    expect(bundleGate).toMatch(/toBeGreaterThanOrEqual\(newestSource\)/);
+  });
 });

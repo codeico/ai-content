@@ -1197,9 +1197,28 @@ Rule: **when a file contains several things of the same kind, an existence
 assertion is not a gate.** Count them, or check each one. `toMatch` over a
 whole file is only safe when exactly one occurrence can exist.
 
-Corollary: a mutation that survives means the test is wrong, not that the
-mutation is harmless. Tighten the test rather than moving on — the mutation
-that survives is precisely the regression nobody will notice.
+Corollary: a mutation that survives usually means the test is wrong, not that
+the mutation is harmless — the mutation that survives is precisely the
+regression nobody will notice.
+
+But diagnose before tightening. Four "survivors" in this audit turned out to
+be broken mutations, not weak gates:
+
+- replacing only the FIRST of three `auth.uid() = id` clauses left the other
+  two policies pinned, so the gate was right to stay green;
+- mutating `content-repository` while the gate reads `workspace-repository`;
+- rewording a sentence the gate does not assert on;
+- breaking caption rendering when the gate is about ownership vs membership.
+
+Hardening a test that was already correct costs real time and makes the suite
+harder to read. Check what the gate actually reads and what the mutation
+actually changed before deciding which one is at fault.
+
+One more failure mode, different in kind. A gate that reads a DERIVED artefact
+— a build output, a generated file — can pass against a stale copy. The
+client-bundle gate scanned `.next/static` but only built when the directory
+was missing, so it happily described code that no longer existed. When a gate
+reads something generated, freshness has to be asserted, not assumed.
 
 ---
 
