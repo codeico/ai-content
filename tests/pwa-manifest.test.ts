@@ -221,3 +221,26 @@ describe('the install survives a change of start URL', () => {
     expect(MANIFEST).not.toMatch(/orientation:/);
   });
 });
+
+describe('the only cached HTML is identical for every user', () => {
+  const OFFLINE = readFileSync(join(process.cwd(), 'apps/web/src/app/offline/page.tsx'), 'utf8');
+
+  it('reads no session and no database', () => {
+    // The offline page is the single HTML document in the cache. If it ever
+    // renders per-user content, a signed-out visitor could prime the cache
+    // and a later signed-in user would be served someone else's page - or
+    // worse, their own would be served to the next person.
+    expect(OFFLINE).not.toMatch(/getAuthenticatedUser|createServerClient|cookies\(\)/);
+    expect(OFFLINE).not.toMatch(/supabase/i);
+  });
+
+  it('is not forced dynamic, so it stays cacheable at install', () => {
+    // force-dynamic would make it uncacheable and the fallback would fail
+    // exactly when it is needed.
+    expect(OFFLINE).not.toMatch(/force-dynamic/);
+  });
+
+  it('takes no props that could carry request state', () => {
+    expect(OFFLINE).toMatch(/export default function OfflinePage\(\)/);
+  });
+});

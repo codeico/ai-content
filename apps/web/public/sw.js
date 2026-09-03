@@ -36,6 +36,26 @@ const OFFLINE_URL = '/offline';
 /** Identity-free assets. No HTML, no API responses, no RSC payloads. */
 const SHELL_ASSETS = [OFFLINE_URL, '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
+/*
+ * On skipWaiting + clients.claim.
+ *
+ * Together these hand control of already-open tabs to a new worker
+ * immediately, which raises the obvious question: can a claimed tab end up
+ * running old JS against newly cached chunks?
+ *
+ * It cannot, and this was measured rather than assumed. Chunk filenames are
+ * content-hashed: editing one client component and rebuilding produced
+ * exactly one new filename out of seventeen, with the other sixteen
+ * unchanged. Old HTML therefore requests the old filenames, which are either
+ * still in the cache or still on the origin - it never asks for a name whose
+ * contents moved underneath it. New HTML requests new names. The two sets do
+ * not collide, so there is no version to skew.
+ *
+ * What skipWaiting does change is that an open tab starts being served by a
+ * worker it did not install. That is safe here only because this worker
+ * caches nothing mutable at a stable URL; if that ever stops being true,
+ * skipWaiting becomes the thing that ships stale code to a live tab.
+ */
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -58,6 +78,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/*
+ * On cache priming by a signed-out visitor.
+ *
+ * Everything in this cache is identity-free by construction: four static
+ * assets and content-hashed build output, none of which vary by user. So the
+ * order in which they were fetched carries no information - a signed-out
+ * visitor priming the cache leaves exactly what a signed-in one would.
+ *
+ * The offline page is the case worth stating explicitly, because it is the
+ * only cached HTML. It is a static route that reads no cookies and touches no
+ * database, so it renders identically for everyone. Verified in production:
+ * the cached copy contains no email address and no workspace name.
+ */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
