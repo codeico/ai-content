@@ -37,3 +37,5 @@ npm-debug.log*
 # transaction). Kept out of the repository: they are evidence for one change,
 # not maintained code, and they name real workspace ids.
 .p6-shots/
+.vercel
+.env*

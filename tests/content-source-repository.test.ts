@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import * as repository from '../apps/web/src/server/repositories/content-repository.ts';
@@ -125,6 +128,18 @@ describe('updateContentSourceInWorkspace', () => {
 
 describe('content repository surface', () => {
   it('exposes no function that can reach content without a workspace id', () => {
+    /**
+     * listAllContentForUser is the one deliberate exception: the Content tab
+     * is explicitly cross-workspace, and RLS restricts the rows to workspaces
+     * the caller belongs to via workspace_ids_for_current_user(). A
+     * client-supplied workspace filter there would narrow the result, not
+     * secure it.
+     *
+     * It is named rather than pattern-matched so adding a second unscoped
+     * function is a decision someone has to make in this file.
+     */
+    const CROSS_WORKSPACE_BY_DESIGN = new Set(['listAllContentForUser']);
+
     const fns = Object.entries(repository).flatMap(([name, value]) =>
       typeof value === 'function' && value !== ContentRepositoryError
         ? [[name, value] as [string, (...args: unknown[]) => unknown]]
@@ -132,8 +147,24 @@ describe('content repository surface', () => {
     );
     expect(fns.length).toBeGreaterThan(0);
     for (const [name, fn] of fns) {
+      if (CROSS_WORKSPACE_BY_DESIGN.has(name)) continue;
       // (supabase, workspaceId, ...) is the minimum signature.
       expect(fn.length, name).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it('keeps the cross-workspace read relying on RLS, not on a client filter', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'apps/web/src/server/repositories/content-repository.ts'),
+      'utf8',
+    );
+    const body = source.slice(
+      source.indexOf('export async function listAllContentForUser'),
+      source.indexOf('export async function countContentByStatus'),
+    );
+
+    expect(body).toContain('.limit(');
+    // A workspace_id predicate here would mean the caller chooses the scope.
+    expect(body).not.toMatch(/\.eq\('workspace_id'/);
   });
 });

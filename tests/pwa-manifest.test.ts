@@ -91,15 +91,27 @@ describe('the manifest satisfies the install criteria', () => {
   });
 });
 
-describe('offline support stays in its phase', () => {
-  it('registers no service worker yet', () => {
-    // A service worker and offline shell are PHASE 10 (IMPLEMENTATION_ROADMAP
-    // "PWA + NOTIFICATIONS"), and CODING_RULES section 3 forbids building a
-    // future phase early. The manifest and icons are correct so that phase has
-    // nothing to fix, but installability itself waits for the worker.
-    const appDir = join(process.cwd(), 'apps/web/src');
+describe('offline support is app-shell only', () => {
+  it('ships a service worker', () => {
+    // Phase 10 was opened deliberately by the owner on 2026-09-03. Until then
+    // this gate asserted the opposite: that no worker had appeared early.
+    expect(existsSync(join(process.cwd(), 'apps/web/public/sw.js'))).toBe(true);
+  });
 
-    expect(existsSync(join(appDir, 'app/sw.ts'))).toBe(false);
-    expect(existsSync(join(process.cwd(), 'apps/web/public/sw.js'))).toBe(false);
+  it('never caches HTML or RSC payloads', () => {
+    const sw = readFileSync(join(process.cwd(), 'apps/web/public/sw.js'), 'utf8');
+
+    // Every page is force-dynamic and authorisation is per request, so a
+    // cached shell could serve one user's workspace to another.
+    expect(sw).toMatch(/request\.mode === 'navigate'/);
+    expect(sw).toMatch(/_rsc/);
+    expect(sw).toMatch(/\/_next\/static\//);
+  });
+
+  it('falls back to an honest offline page', () => {
+    const sw = readFileSync(join(process.cwd(), 'apps/web/public/sw.js'), 'utf8');
+
+    expect(sw).toMatch(/OFFLINE_URL/);
+    expect(existsSync(join(process.cwd(), 'apps/web/src/app/offline/page.tsx'))).toBe(true);
   });
 });

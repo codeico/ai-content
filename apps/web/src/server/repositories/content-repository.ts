@@ -127,6 +127,48 @@ export async function listContentForWorkspace(
  * workspace holding 300. Selects only the status column so the payload stays
  * small even for a large workspace.
  */
+/**
+ * Every content row the caller can see, newest first, across all their
+ * workspaces.
+ *
+ * There is no workspace predicate here, and that is the one place in this
+ * file where that is correct: the Content tab is explicitly cross-workspace,
+ * and RLS already restricts the rows to workspaces the caller belongs to via
+ * workspace_ids_for_current_user(). Adding a client-supplied workspace filter
+ * would narrow it, not secure it.
+ *
+ * Bounded like every other list. The join pulls the workspace name so the UI
+ * can say which workspace a row belongs to without an N+1.
+ */
+export async function listAllContentForUser(
+  supabase: ContentClient,
+  options: { limit?: number } = {},
+): Promise<(Content & { workspace_name: string })[]> {
+  const limit = options.limit ?? CONTENT_PAGE_SIZE;
+
+  const { data, error } = await supabase
+    .from('content')
+    .select(`${CONTENT_COLUMNS}, workspaces(name)`)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new ContentRepositoryError('Unable to load content.', error);
+  }
+
+  return (data ?? []).map((row) => {
+    const { workspaces, ...content } = row as Content & {
+      workspaces: { name: string } | { name: string }[] | null;
+    };
+    // PostgREST returns an object for a to-one embed and an array when it
+    // cannot prove the relationship is to-one; handle both rather than guess.
+    const related = Array.isArray(workspaces) ? workspaces[0] : workspaces;
+
+    return { ...content, workspace_name: related?.name ?? 'Unknown workspace' };
+  });
+}
+
 export async function countContentByStatus(
   supabase: ContentClient,
   workspaceId: string,
