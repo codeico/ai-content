@@ -277,6 +277,29 @@ Zod
 
 atau validator yang telah disepakati architecture.
 
+## 9.1 Query-string input is external input
+
+`searchParams` is as untrusted as a request body, and it is easy to forget
+because it arrives as ordinary strings on a server component's props.
+
+The pagination cursor was passed straight into a PostgREST `.or(...)` filter.
+No data leaked — the workspace predicate is a separate conjunct, so the cursor
+could not widen it — but a malformed timestamp reached Postgres, raised
+`22007`, and **broke the entire workspace page**. A mistyped URL or a stale
+bookmark was enough; no attacker was required.
+
+Two rules follow:
+
+1. Validate query-string values to the exact shape they must have, and fall
+   back to a sensible default rather than failing the request.
+   `parseContentCursor` returns `null` for anything malformed, and `null`
+   already means "first page".
+2. Prefer passing values as arguments (`.eq('id', value)`), which the driver
+   parameterises, over building a filter expression by interpolation. Where an
+   expression is unavoidable, validate first.
+   `tests/query-interpolation-gate.test.ts` fails if a second interpolated
+   filter appears without that decision being made deliberately.
+
 ---
 
 # 10. Environment Variables
@@ -455,6 +478,35 @@ Default:
 ```text
 Deny unless explicitly allowed
 ```
+
+## 17.1 RLS decides rows, never columns
+
+Postgres has no column-level RLS. A policy's `WITH CHECK` answers "may you
+touch a row that looks like this?" — never "may you turn *this* row into that
+one?" Every UPDATE policy therefore permits rewriting any column of a row the
+caller may already touch.
+
+This produced five separate defects in Phases 6–7B, all the same shape:
+
+- caption `model_name`, `prompt_version`, `created_by` and `body` were
+  rewritable, so provenance could be forged and a chosen caption could drift
+- `content.workspace_id` was rewritable, so a member of two workspaces could
+  **move content between them**, its captions following via the composite FK
+- `workspace_profiles.workspace_id` had the same defect
+- `workspaces.owner_id` was rewritable (self-limiting, but frozen anyway)
+
+Rule: **a table with an UPDATE policy needs a `BEFORE UPDATE` trigger naming
+the columns that may change**, unless its policy pins identity in the predicate
+itself (as `profiles` does with `auth.uid() = id` on both sides).
+
+Write the trigger in the same migration as the policy. `tests/update-policy-guards.test.ts`
+fails on any table that has one without the other.
+
+Corollary: an application-level bound is not a database bound. `CAPTION_MAX_VERSIONS`
+is checked in the Server Action, so a client talking to PostgREST directly can
+exceed it. That is acceptable where the bound protects a cost incurred in the
+action (a paid model call), and unacceptable where the row's mere existence is
+the thing being limited. Say which one you are relying on.
 
 ---
 
