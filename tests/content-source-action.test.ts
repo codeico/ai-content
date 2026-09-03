@@ -67,6 +67,7 @@ const DRAFT_ROW: Content = {
   workspace_id: WORKSPACE_ID,
   title: 'Hello',
   status: 'draft',
+  description: null,
   source_type: 'tiktok',
   source_url: 'https://www.tiktok.com/@a/video/1',
   external_id: '1',

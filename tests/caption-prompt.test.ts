@@ -30,6 +30,7 @@ const CONTENT = {
   title: 'Five-minute breakfast idea',
   source_type: 'tiktok',
   source_url: 'https://www.tiktok.com/@x/video/1',
+  description: null,
 };
 
 describe('buildCaptionMessages', () => {
@@ -77,7 +78,7 @@ describe('buildCaptionMessages', () => {
   it('omits the source link line when there is none', () => {
     const [, user] = buildCaptionMessages({
       profile: FULL_PROFILE,
-      content: { ...CONTENT, source_url: null },
+      content: { ...CONTENT, source_url: null, description: null },
     });
 
     expect(user!.content).not.toContain('Source link');

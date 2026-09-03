@@ -99,6 +99,23 @@ export const OWNER_SETTABLE_MEDIA_STATUSES = [
   'missing',
 ] as const satisfies readonly MediaStatus[];
 
+/**
+ * Author-written summary of the content, fed to the caption prompt.
+ *
+ * A bound, not a product rule: long enough for a real summary, short enough
+ * that one row cannot dominate a model request. Mirrored by a CHECK in
+ * 20260903160000_add_content_description.sql.
+ */
+export const CONTENT_DESCRIPTION_MAX_LENGTH = 2000;
+
+/** Blank means "not described"; stored as null rather than an empty string. */
+export const contentDescriptionSchema = z
+  .string()
+  .trim()
+  .max(CONTENT_DESCRIPTION_MAX_LENGTH, 'Description is too long.')
+  .transform((value) => (value.length === 0 ? null : value))
+  .nullable();
+
 /** Route/param ids are attacker-controlled; reject non-UUIDs before any query. */
 export const contentIdSchema = z.uuid();
 
@@ -109,6 +126,10 @@ export const createContentSchema = z.object({
 export const updateContentSchema = z.object({
   title: contentTitleSchema,
   status: contentStatusSchema,
+  // Optional at the boundary: a caller that omits it means "not described",
+  // the same as sending blank. Prevents an older form or a partial payload
+  // from failing validation on a field it never knew about.
+  description: contentDescriptionSchema.optional().default(null),
 });
 
 /**

@@ -96,7 +96,7 @@ describe('createContentInWorkspace', () => {
 
 describe('updateContentInWorkspace', () => {
   it('updates only title/status, scoped to workspace and content id', async () => {
-    const patch = { title: 'New', status: 'ready' as const };
+    const patch = { title: 'New', status: 'ready' as const, description: null };
     const builder = new MockQueryBuilder({ data: { ...ROW, ...patch }, error: null });
     const { client } = createMockClient({ content: builder });
 
@@ -118,6 +118,7 @@ describe('updateContentInWorkspace', () => {
     expect(
       await updateContentInWorkspace(client, WORKSPACE_ID, CONTENT_ID, {
         title: 'x',
+        description: null,
         status: 'draft',
       }),
     ).toBeNull();

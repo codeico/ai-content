@@ -20,13 +20,15 @@ import type { WorkspaceProfileInput } from '@ai-content/shared/workspace/profile
  * change output. Stored on every caption row so two versions can be compared
  * and a regression traced to the prompt that produced it (CODING_RULES §25).
  */
-export const CAPTION_PROMPT_VERSION = 'caption-v1';
+export const CAPTION_PROMPT_VERSION = 'caption-v2';
 
 /** The subset of a content row the prompt reads. Kept narrow so tests need no full row. */
 export interface CaptionContentInput {
   title: string;
   source_type: string;
   source_url: string | null;
+  /** Author-written summary. Null until described; omitted from the prompt when absent. */
+  description: string | null;
 }
 
 export interface CaptionPromptInput {
@@ -66,10 +68,16 @@ export function buildCaptionMessages(input: CaptionPromptInput): AIChatMessage[]
     ? `${SYSTEM_BASE}\n\nAccount brief:\n${brief}`
     : `${SYSTEM_BASE}\n\nAccount brief: none provided. Keep the caption neutral and short.`;
 
-  const contentLines = [
-    `Title: ${input.content.title}`,
-    `Source type: ${input.content.source_type}`,
-  ];
+  // Description sits in the USER message with the other facts about this one
+  // item, never in the system message: the system message is the account's
+  // standing brief, and content text must not be able to pose as it.
+  const contentLines = [`Title: ${input.content.title}`];
+
+  if (input.content.description) {
+    contentLines.push(`What it is about: ${input.content.description}`);
+  }
+
+  contentLines.push(`Source type: ${input.content.source_type}`);
 
   if (input.content.source_url) {
     contentLines.push(`Source link: ${input.content.source_url}`);

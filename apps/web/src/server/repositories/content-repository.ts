@@ -42,7 +42,7 @@ export type Content = Omit<Tables<'content'>, 'status' | 'source_type' | 'media_
 };
 
 const CONTENT_COLUMNS =
-  'id, workspace_id, title, status, source_type, source_url, external_id, storage_provider, storage_key, media_status, created_at, updated_at';
+  'id, workspace_id, title, status, description, source_type, source_url, external_id, storage_provider, storage_key, media_status, created_at, updated_at';
 
 export async function listContentForWorkspace(
   supabase: ContentClient,
@@ -101,12 +101,15 @@ export async function createContentInWorkspace(
   return data as Content;
 }
 
-/** Only title and status are writable; workspace_id is never part of the payload (§19). */
+/**
+ * Only title, status and description are writable; workspace_id is never part
+ * of the payload (§19).
+ */
 export async function updateContentInWorkspace(
   supabase: ContentClient,
   workspaceId: string,
   contentId: string,
-  patch: { title: string; status: ContentStatus },
+  patch: { title: string; status: ContentStatus; description: string | null },
 ): Promise<Content | null> {
   const { data, error } = await supabase
     .from('content')

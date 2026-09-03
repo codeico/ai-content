@@ -76,7 +76,7 @@ const SAVED = {
   body: 'Garlic noodles in five minutes.',
   status: 'draft',
   model_name: 'router-reported-model',
-  prompt_version: 'caption-v1',
+  prompt_version: 'caption-v2',
   created_by: USER.id,
   created_at: '',
   updated_at: '',
@@ -247,7 +247,7 @@ describe('generateCaption', () => {
       unknown
     >;
     expect(payload.model_name).toBe('router-reported-model');
-    expect(payload.prompt_version).toBe('caption-v1');
+    expect(payload.prompt_version).toBe('caption-v2');
     expect(payload.created_by).toBe(USER.id);
     expect(payload.version).toBe(1);
   });

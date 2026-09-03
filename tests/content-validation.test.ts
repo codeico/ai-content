@@ -36,7 +36,7 @@ describe('validateUpdateContent', () => {
   it.each(['draft', 'ready', 'archived'])('accepts status %s', (status) => {
     expect(validateUpdateContent({ title: 'x', status })).toEqual({
       success: true,
-      data: { title: 'x', status },
+      data: { title: 'x', status, description: null },
     });
   });
 

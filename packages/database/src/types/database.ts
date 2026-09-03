@@ -68,6 +68,7 @@ export type Database = {
       content: {
         Row: {
           created_at: string;
+          description: string | null;
           external_id: string | null;
           id: string;
           media_status: string;
@@ -82,6 +83,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          description?: string | null;
           external_id?: string | null;
           id?: string;
           media_status?: string;
@@ -96,6 +98,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          description?: string | null;
           external_id?: string | null;
           id?: string;
           media_status?: string;

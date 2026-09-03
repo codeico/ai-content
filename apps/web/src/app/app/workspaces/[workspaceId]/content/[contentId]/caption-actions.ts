@@ -166,6 +166,7 @@ export async function generateCaptionWith(
         title: content.title,
         source_type: content.source_type,
         source_url: content.source_url,
+        description: content.description,
       },
       profile,
     });

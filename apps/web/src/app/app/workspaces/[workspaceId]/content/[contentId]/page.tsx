@@ -137,6 +137,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
               action={boundUpdateContent}
               currentTitle={content.title}
               currentStatus={content.status}
+              currentDescription={content.description}
             />
           </section>
 
@@ -166,7 +167,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
             </h2>
             <p className="mb-4 text-[14px] text-ink-soft">
               {captions.length === 0
-                ? 'Written from the title, the source and the workspace AI profile. Every version is kept.'
+                ? 'Written from what this content is about and the workspace AI profile. Every version is kept.'
                 : 'Every version is kept. Pick the one to use; writing another never replaces it.'}
             </p>
 

@@ -105,6 +105,7 @@ export async function updateContent(
   const parsed = validateUpdateContent({
     title: formData.get('title'),
     status: formData.get('status'),
+    description: formData.get('description') ?? '',
   });
 
   if (!parsed.success) {
