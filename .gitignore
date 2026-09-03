@@ -32,3 +32,8 @@ npm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Throwaway verification scripts (live DB probes run inside a rolled-back
+# transaction). Kept out of the repository: they are evidence for one change,
+# not maintained code, and they name real workspace ids.
+.p6-shots/
