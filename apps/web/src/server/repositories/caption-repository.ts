@@ -29,6 +29,12 @@ export class CaptionRepositoryError extends Error {
 /** Narrow the CHECK-constrained status column to the shared enum. */
 export type Caption = Omit<Tables<'captions'>, 'status'> & { status: CaptionStatus };
 
+/**
+ * Recorded in model_name when a person wrote the text. Not a model id: it must
+ * never be mistaken for one, and the column is not nullable.
+ */
+export const HUMAN_EDIT_MODEL_NAME = 'human';
+
 const CAPTION_COLUMNS =
   'id, content_id, workspace_id, version, body, status, model_name, prompt_version, created_by, created_at, updated_at';
 
@@ -131,6 +137,60 @@ export async function insertNextCaptionVersion(
   }
 
   return data as Caption;
+}
+
+/**
+ * One caption, scoped by both ids so a caption is unreachable by its own id
+ * alone. Null when it is not in this workspace/content — indistinguishable
+ * from "does not exist" on purpose.
+ */
+export async function getCaptionInContent(
+  supabase: CaptionClient,
+  workspaceId: string,
+  contentId: string,
+  captionId: string,
+): Promise<Caption | null> {
+  const { data, error } = await supabase
+    .from('captions')
+    .select(CAPTION_COLUMNS)
+    .eq('workspace_id', workspaceId)
+    .eq('content_id', contentId)
+    .eq('id', captionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new CaptionRepositoryError('Unable to load caption.', error);
+  }
+
+  return data as Caption | null;
+}
+
+/**
+ * Saves an edited caption as the NEXT version rather than changing the one the
+ * user started from.
+ *
+ * Rewriting in place is refused by the database (20260903150000): a caption's
+ * body is write-once, because an already-chosen caption silently changing
+ * underneath a schedule is a correctness problem, and because provenance
+ * (which model, which prompt) stops meaning anything once the text can drift.
+ *
+ * The new version records the human as its author: created_by is the editor,
+ * model_name is the sentinel below, and prompt_version carries the version the
+ * text was derived from, so an edited caption is never mistaken for generated
+ * output.
+ */
+export async function insertEditedCaptionVersion(
+  supabase: CaptionClient,
+  workspaceId: string,
+  contentId: string,
+  edit: { body: string; created_by: string; derived_from_prompt_version: string },
+): Promise<Caption> {
+  return insertNextCaptionVersion(supabase, workspaceId, contentId, {
+    body: edit.body,
+    model_name: HUMAN_EDIT_MODEL_NAME,
+    prompt_version: edit.derived_from_prompt_version,
+    created_by: edit.created_by,
+  });
 }
 
 /**

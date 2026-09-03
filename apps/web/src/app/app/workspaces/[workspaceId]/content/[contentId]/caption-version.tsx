@@ -4,11 +4,15 @@ import type { CaptionStatus } from '@ai-content/shared/content/caption';
 import { useActionState } from 'react';
 
 import type { CaptionActionState } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-actions';
+import { EditCaptionForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-caption-form';
 import { CopyCaptionButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/copy-caption-button';
 import { Button, CaptionStatusMark, Notice } from '@/components/ui';
 
 interface CaptionVersionProps {
   action: (state: CaptionActionState, formData: FormData) => Promise<CaptionActionState>;
+  editAction: (state: CaptionActionState, formData: FormData) => Promise<CaptionActionState>;
+  /** True when a person wrote this text, not a model. */
+  isHumanEdited: boolean;
   caption: {
     id: string;
     version: number;
@@ -26,7 +30,13 @@ interface CaptionVersionProps {
  * a disclosure. Select is a form so it works without JS and follows the same
  * Server Action gate as everything else.
  */
-export function CaptionVersion({ action, caption, createdLabel }: CaptionVersionProps) {
+export function CaptionVersion({
+  action,
+  editAction,
+  caption,
+  createdLabel,
+  isHumanEdited,
+}: CaptionVersionProps) {
   const [state, formAction, isPending] = useActionState<CaptionActionState, FormData>(action, {});
   const isActive = caption.status === 'active';
 
@@ -44,15 +54,21 @@ export function CaptionVersion({ action, caption, createdLabel }: CaptionVersion
       <p className="text-[15px] leading-[1.6] whitespace-pre-wrap break-words">{caption.body}</p>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <span
-          className="font-mono text-[12px] text-ink-faint"
-          title="Model reported by the AI Router"
-        >
-          {caption.model_name}
-        </span>
+        {isHumanEdited ? (
+          <span className="text-[12px] text-ink-faint">Edited by hand</span>
+        ) : (
+          <span
+            className="font-mono text-[12px] text-ink-faint"
+            title="Model reported by the AI Router"
+          >
+            {caption.model_name}
+          </span>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <CopyCaptionButton body={caption.body} />
+
+          <EditCaptionForm action={editAction} body={caption.body} version={caption.version} />
 
           {isActive ? null : (
             <form action={formAction} className="flex min-w-0 flex-col gap-2">

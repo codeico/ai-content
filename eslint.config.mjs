@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/build/**',
       '**/coverage/**',
       '**/next-env.d.ts',
+      // Throwaway database/router probe scripts; gitignored, never shipped.
+      '.p6-shots/**',
     ],
   },
 

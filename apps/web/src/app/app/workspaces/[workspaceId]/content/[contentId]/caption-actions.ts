@@ -1,7 +1,11 @@
 'use server';
 
 import { AIError, createAIProvider, type AIProvider } from '@ai-content/ai';
-import { CAPTION_BODY_MAX_LENGTH, CAPTION_MAX_VERSIONS } from '@ai-content/shared/content/caption';
+import {
+  CAPTION_MAX_VERSIONS,
+  CAPTION_BODY_MAX_LENGTH,
+  captionBodySchema,
+} from '@ai-content/shared/content/caption';
 import { EnvValidationError, loadFutureProviderEnv } from '@ai-content/shared/env';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -11,6 +15,8 @@ import { buildCaptionMessages, CAPTION_PROMPT_VERSION } from '@/server/ai/captio
 import {
   CaptionRepositoryError,
   countCaptionsForContent,
+  getCaptionInContent,
+  insertEditedCaptionVersion,
   insertNextCaptionVersion,
   isUniqueViolation,
   selectCaptionAsActive,
@@ -275,6 +281,82 @@ export async function selectCaption(
 
   if (!selected) {
     return { error: 'Caption not found.' };
+  }
+
+  refresh();
+
+  return {};
+}
+
+/**
+ * Saves an edited caption as a new version.
+ *
+ * Same gate as every other caption action. Editing appends rather than
+ * rewrites: the database refuses a body change (20260903150000), so a chosen
+ * caption cannot drift underneath a schedule and provenance stays meaningful.
+ * The version cap applies here too — an edit is a row like any other.
+ */
+export async function editCaption(
+  workspaceId: string,
+  contentId: string,
+  captionId: string,
+  _prevState: CaptionActionState,
+  formData: FormData,
+): Promise<CaptionActionState> {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  if (!isWorkspaceId(workspaceId) || !isContentId(contentId) || !isCaptionId(captionId)) {
+    return { error: NO_ACCESS };
+  }
+
+  const parsed = captionBodySchema.safeParse(formData.get('body') ?? '');
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'That caption cannot be saved.' };
+  }
+
+  try {
+    const supabase = await createServerClient();
+
+    if (!(await getWorkspaceForUser(supabase, workspaceId, user.id))) {
+      return { error: NO_ACCESS };
+    }
+
+    const source = await getCaptionInContent(supabase, workspaceId, contentId, captionId);
+
+    if (!source) {
+      return { error: 'Caption not found.' };
+    }
+
+    // Nothing changed: saving an identical body would spend a version for no
+    // reason and clutter the history the user is trying to read.
+    if (source.body === parsed.data) {
+      return {};
+    }
+
+    const existingVersions = await countCaptionsForContent(supabase, workspaceId, contentId);
+
+    if (existingVersions >= CAPTION_MAX_VERSIONS) {
+      return {
+        error: `This content already has ${CAPTION_MAX_VERSIONS} caption versions. Select one, or start new content.`,
+      };
+    }
+
+    await insertEditedCaptionVersion(supabase, workspaceId, contentId, {
+      body: parsed.data,
+      created_by: user.id,
+      derived_from_prompt_version: source.prompt_version,
+    });
+  } catch (error) {
+    if (error instanceof CaptionRepositoryError) {
+      return { error: 'Unable to save the caption. Please try again.' };
+    }
+
+    throw error;
   }
 
   refresh();

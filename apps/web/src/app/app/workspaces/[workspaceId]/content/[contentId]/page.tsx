@@ -10,6 +10,7 @@ import {
   updateContentSource,
 } from '@/app/app/workspaces/[workspaceId]/content-actions';
 import {
+  editCaption,
   generateCaption,
   selectCaption,
 } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-actions';
@@ -20,7 +21,10 @@ import { EditSourceForm } from '@/app/app/workspaces/[workspaceId]/content/[cont
 import { GenerateCaptionButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/generate-caption-button';
 import { MediaStatusMark, PageHeader, SOURCE_TYPE_LABEL, StatusMark } from '@/components/ui';
 import { describeProfile } from '@/server/ai/caption-prompt';
-import { listCaptionsForContent } from '@/server/repositories/caption-repository';
+import {
+  HUMAN_EDIT_MODEL_NAME,
+  listCaptionsForContent,
+} from '@/server/repositories/caption-repository';
 import { getContentInWorkspace } from '@/server/repositories/content-repository';
 import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
@@ -196,7 +200,9 @@ export default async function ContentPage({ params }: ContentPageProps) {
                     key={caption.id}
                     caption={caption}
                     createdLabel={dateFormat.format(new Date(caption.created_at))}
+                    isHumanEdited={caption.model_name === HUMAN_EDIT_MODEL_NAME}
                     action={selectCaption.bind(null, workspace.id, content.id, caption.id)}
+                    editAction={editCaption.bind(null, workspace.id, content.id, caption.id)}
                   />
                 ))}
               </ol>
