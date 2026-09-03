@@ -1171,6 +1171,36 @@ Tests implementation detail only
 
 Test harus memverifikasi behavior penting.
 
+## 47.1 A passing test is not a working test
+
+Every gate written this session was mutation-checked: break the code on
+purpose, confirm the test fails, restore. Four gates passed that check only
+after being rewritten, and all four failed the same way — they asserted that a
+**string existed** somewhere in a file rather than that a **behaviour held**.
+
+The failures, in the order they happened:
+
+- `expect(BUTTON).toMatch(/hasCaptions/)` — a mutation that renamed the prop
+  kept the string and changed the behaviour. Fixed by asserting both labels
+  and the branch between them.
+- `expect(ACTIONS).toMatch(/throw error;/)` — the file has several catch
+  blocks, so deleting one rethrow left the others matching. Fixed by counting
+  rethrows against catch blocks.
+- `expect(ACTIONS).toMatch(/redirect\('\/login'\)/)` — same shape, same file,
+  one hour later. Fixed by splitting the file into action bodies and requiring
+  every action that reads a user to redirect.
+- A source-order check that compared the first occurrence in a whole file, so
+  an import satisfied it before any code ran. Fixed by measuring inside each
+  function body.
+
+Rule: **when a file contains several things of the same kind, an existence
+assertion is not a gate.** Count them, or check each one. `toMatch` over a
+whole file is only safe when exactly one occurrence can exist.
+
+Corollary: a mutation that survives means the test is wrong, not that the
+mutation is harmless. Tighten the test rather than moving on — the mutation
+that survives is precisely the regression nobody will notice.
+
 ---
 
 # 48. Regression Rule
