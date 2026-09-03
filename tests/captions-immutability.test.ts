@@ -53,8 +53,13 @@ describe('caption columns are immutable after insert', () => {
 
   it('fires BEFORE UPDATE FOR EACH ROW, so no client can bypass it', () => {
     const sql = immutabilityMigration().toLowerCase();
+    // The trigger keyword itself matters: breaking `create trigger` while
+    // leaving the timing clauses intact kept every other assertion passing,
+    // and a migration that defines no trigger enforces nothing.
+    expect(sql).toMatch(/create trigger \w+/);
     expect(sql).toContain('before update on public.captions');
     expect(sql).toContain('for each row');
+    expect(sql).toMatch(/execute function \w+/);
   });
 
   it('the repository still only ever updates status', () => {
