@@ -36,7 +36,7 @@ export default async function AppPage() {
       />
 
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_320px] md:gap-12">
-        <section aria-labelledby="workspaces-heading">
+        <section aria-labelledby="workspaces-heading" className="min-w-0">
           <h2 id="workspaces-heading" className="sr-only">
             Your workspaces
           </h2>

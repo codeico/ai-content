@@ -137,7 +137,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
       />
 
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_320px] md:gap-12">
-        <section aria-labelledby="content-heading">
+        <section aria-labelledby="content-heading" className="min-w-0">
           <h2 id="content-heading" className="sr-only">
             Content
           </h2>
