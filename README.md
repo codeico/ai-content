@@ -6,9 +6,10 @@ A PWA for managing several Instagram accounts — each with its own niche, conte
 strategy, and AI personality — from a single place. Content discovery, AI analysis,
 caption generation, scheduling, and publishing are handled per workspace.
 
-> **Project status: Phases 0–6 complete — authentication, workspaces, content
-> domain, AI router foundation, mobile-first frontend, and content source/media
-> foundation.** AI analysis, background jobs, scheduling, and publishing are
+> **Project status: Phases 0–7A complete — authentication, workspaces, content
+> domain, AI router foundation, mobile-first frontend, content source/media
+> foundation, and the workspace AI profile.** AI analysis, background jobs,
+> scheduling, and publishing are
 > delivered by later phases; see [Implemented vs Planned](#implemented-vs-planned).
 
 ## Technology Stack
@@ -121,7 +122,7 @@ All of the above are expected to pass before a phase is considered complete.
 
 ## Implemented vs Planned
 
-**Implemented (Phases 0–6)**
+**Implemented (Phases 0–7A)**
 
 - npm workspace structure, Next.js App Router shell, TypeScript strict mode
 - ESLint, Prettier, Vitest; environment validation with runtime/server/AI separation
@@ -136,6 +137,10 @@ All of the above are expected to pass before a phase is considered complete.
 - Mobile-first frontend for workspaces and content
 - Content source and media foundation: neutral `source_type`, `source_url`,
   `external_id`, object-storage reference pair, and `media_status` lifecycle
+- Workspace AI profile: `workspace_profiles` holding niche, description,
+  audience, tone, writing style, goals, and restrictions. Owner-editable,
+  member-readable. Stored as configuration for later AI features; nothing reads
+  it for generation yet
 
 **Planned (later phases)**
 
