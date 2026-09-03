@@ -157,6 +157,12 @@ devDependency: `npm run db:push:dry` previews pending migrations against the
 linked project, `npm run db:push` applies them, `npm run db:migrations` shows
 local vs remote state.
 
+**Known constraint:** `workspaces.owner_id` is `on delete restrict`, so an
+account that owns a workspace cannot be deleted until ownership is transferred
+or the workspace is removed. This is deliberate — it makes orphaning a
+workspace impossible — but it means account deletion needs an explicit
+ownership-transfer step, which no phase has built yet.
+
 ## Documentation
 
 Read before contributing:
