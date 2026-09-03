@@ -166,7 +166,11 @@ export default async function ContentPage({ params }: ContentPageProps) {
                 The workspace has no AI profile yet, so captions will be generic.{' '}
                 <Link
                   href={`/app/workspaces/${workspace.id}/profile`}
-                  className="underline underline-offset-2 hover:text-ink"
+                  // Inline in a sentence, so it cannot be 44px tall without
+                  // breaking the line. Vertical padding widens the touch area
+                  // into the line's leading; the negative margin keeps the
+                  // text where it sits so the sentence does not gain a gap.
+                  className="-my-3 inline-block py-3 underline underline-offset-2 hover:text-ink"
                 >
                   {workspace.owner_id === user.id ? 'Fill it in' : 'See the profile'}
                 </Link>

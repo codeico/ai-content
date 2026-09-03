@@ -54,3 +54,23 @@ describe('the negative margin on a cell stays inside its parent', () => {
     expect(code).toMatch(/min-w-0/);
   });
 });
+
+describe('an inline link is still big enough to tap', () => {
+  const CONTENT_PAGE = source(
+    'apps/web/src/app/app/workspaces/[workspaceId]/content/[contentId]/page.tsx',
+  );
+
+  it('pads the profile link into the line leading', () => {
+    // Measured at 320px: the link was 18px tall, well under the 44px minimum.
+    // It sits mid-sentence, so it cannot simply be made taller without
+    // breaking the paragraph - padding plus a matching negative margin grows
+    // the touch area while leaving the text where it sits. After: 45px tall,
+    // paragraph unchanged at 42px.
+    const link = CONTENT_PAGE.match(/<Link[^>]*profile`\}[\s\S]{0,400}?className="([^"]+)"/)?.[1];
+
+    expect(link, 'the profile hint link should exist').toBeDefined();
+    expect(link).toMatch(/py-3/);
+    expect(link).toMatch(/-my-3/);
+    expect(link).toMatch(/inline-block/);
+  });
+});
