@@ -29,6 +29,8 @@ const SHEET_FORMS = [
   'apps/web/src/app/app/workspaces/[workspaceId]/create-content-form.tsx',
   'apps/web/src/app/app/create-workspace-form.tsx',
   'apps/web/src/app/app/workspaces/[workspaceId]/rename-workspace-form.tsx',
+  'apps/web/src/app/app/workspaces/[workspaceId]/content/[contentId]/edit-content-form.tsx',
+  'apps/web/src/app/app/workspaces/[workspaceId]/content/[contentId]/edit-source-form.tsx',
 ];
 
 function formSource(path: string): string {
@@ -127,5 +129,35 @@ describe('the sheet fits a phone', () => {
     const reduced = CSS.slice(CSS.indexOf('prefers-reduced-motion'));
 
     expect(reduced).toMatch(/\.sheet\[open\]/);
+  });
+});
+
+describe('the content screen leads with what it is for', () => {
+  const PAGE = readFileSync(
+    join(
+      process.cwd(),
+      'apps/web/src/app/app/workspaces/[workspaceId]/content/[contentId]/page.tsx',
+    ),
+    'utf8',
+  );
+
+  it('puts Caption above the edit forms', () => {
+    // Measured before: the page was 3371px (4 phone screens) and Caption began
+    // at 1372px, behind Details and Source. After: 2319px, Caption at 171px.
+    const caption = PAGE.indexOf('captions-heading');
+    const details = PAGE.indexOf('Edit details');
+
+    expect(caption).toBeGreaterThan(-1);
+    expect(caption).toBeLessThan(details);
+  });
+
+  it('presents Details and Source as sheets rather than inline forms', () => {
+    expect(PAGE).toMatch(/<Sheet trigger="Edit details"/);
+    expect(PAGE).toMatch(/<Sheet trigger=\{hasSource \? 'Edit source' : 'Add a source'\}/);
+  });
+
+  it('names the source trigger for what it does', () => {
+    // "Edit source" on content with no source invites a user to edit nothing.
+    expect(PAGE).toMatch(/'Add a source'/);
   });
 });

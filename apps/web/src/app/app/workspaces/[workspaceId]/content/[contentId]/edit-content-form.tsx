@@ -8,6 +8,7 @@ import {
 import { useActionState } from 'react';
 
 import type { ContentFormState } from '@/app/app/workspaces/[workspaceId]/content-actions';
+import { useCloseOnSuccess } from '@/components/use-close-on-success';
 import { Button, Field, Input, Notice, STATUS_LABEL, Select, Textarea } from '@/components/ui';
 
 interface EditContentFormProps {
@@ -24,6 +25,8 @@ export function EditContentForm({
   currentDescription,
 }: EditContentFormProps) {
   const [state, formAction, isPending] = useActionState<ContentFormState, FormData>(action, {});
+
+  useCloseOnSuccess(isPending, state);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

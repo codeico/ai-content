@@ -9,6 +9,7 @@ import {
 import { useActionState } from 'react';
 
 import type { ContentSourceFormState } from '@/app/app/workspaces/[workspaceId]/content-actions';
+import { useCloseOnSuccess } from '@/components/use-close-on-success';
 import {
   Button,
   Field,
@@ -39,6 +40,8 @@ export function EditSourceForm({ action, current }: EditSourceFormProps) {
     action,
     {},
   );
+
+  useCloseOnSuccess(isPending, state);
 
   // 'available' is not owner-settable; if a later phase has set it, keep the
   // control honest by showing the current value read-only rather than

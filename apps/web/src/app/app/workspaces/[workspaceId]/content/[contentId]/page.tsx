@@ -21,6 +21,7 @@ import { EditSourceForm } from '@/app/app/workspaces/[workspaceId]/content/[cont
 import { GenerateCaptionButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/generate-caption-button';
 import { MediaStatusMark, PageHeader, SOURCE_TYPE_LABEL, StatusMark } from '@/components/ui';
 import { AppBar } from '@/components/app-bar';
+import { Sheet } from '@/components/sheet';
 import { describeProfile } from '@/server/ai/caption-prompt';
 import {
   HUMAN_EDIT_MODEL_NAME,
@@ -141,38 +142,15 @@ export default async function ContentPage({ params }: ContentPageProps) {
       <PageHeader title={content.title} meta={<StatusMark status={content.status} />} hideTitle />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
         <div className="flex min-w-0 flex-col gap-10">
-          <section aria-labelledby="edit-heading" className="border-t border-line pt-5">
-            <h2 id="edit-heading" className="mb-4 font-medium">
-              Details
-            </h2>
-            <EditContentForm
-              action={boundUpdateContent}
-              currentTitle={content.title}
-              currentStatus={content.status}
-              currentDescription={content.description}
-            />
-          </section>
+          {/*
+            Caption comes first because it is what the screen is for. It used
+            to sit 1372px down, below two edit forms, so on a phone the
+            artefact the user opened the page to read was more than a screen
+            and a half of scrolling away.
 
-          <section aria-labelledby="source-heading" className="border-t border-line pt-5">
-            <h2 id="source-heading" className="mb-1 font-medium">
-              Source
-            </h2>
-            <p className="mb-4 text-[14px] text-ink-soft">
-              {hasSource
-                ? 'Where this content comes from. Nothing is downloaded or fetched.'
-                : 'No source yet. Say where this content comes from; a link is optional.'}
-            </p>
-            <EditSourceForm
-              action={boundUpdateContentSource}
-              current={{
-                source_type: content.source_type,
-                source_url: content.source_url,
-                external_id: content.external_id,
-                media_status: content.media_status,
-              }}
-            />
-          </section>
-
+            Details and Source are occasional edits, not reading material, so
+            they moved into sheets below.
+          */}
           <section aria-labelledby="captions-heading" className="border-t border-line pt-5">
             <h2 id="captions-heading" className="mb-1 font-medium">
               Caption
@@ -216,6 +194,29 @@ export default async function ContentPage({ params }: ContentPageProps) {
               </ol>
             ) : null}
           </section>
+
+          <div className="flex flex-col gap-3 border-t border-line pt-5">
+            <Sheet trigger="Edit details" title="Details">
+              <EditContentForm
+                action={boundUpdateContent}
+                currentTitle={content.title}
+                currentStatus={content.status}
+                currentDescription={content.description}
+              />
+            </Sheet>
+
+            <Sheet trigger={hasSource ? 'Edit source' : 'Add a source'} title="Source">
+              <EditSourceForm
+                action={boundUpdateContentSource}
+                current={{
+                  source_type: content.source_type,
+                  source_url: content.source_url,
+                  external_id: content.external_id,
+                  media_status: content.media_status,
+                }}
+              />
+            </Sheet>
+          </div>
 
           <section aria-labelledby="stages-heading" className="border-t border-line pt-5">
             <h2 id="stages-heading" className="mb-1 font-medium">
