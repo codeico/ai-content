@@ -19,10 +19,22 @@ import { describe, expect, it } from 'vitest';
  *    handle travels by context instead.
  */
 const SHEET = readFileSync(join(process.cwd(), 'apps/web/src/components/sheet.tsx'), 'utf8');
-const FORM = readFileSync(
-  join(process.cwd(), 'apps/web/src/app/app/workspaces/[workspaceId]/create-content-form.tsx'),
+const HOOK = readFileSync(
+  join(process.cwd(), 'apps/web/src/components/use-close-on-success.ts'),
   'utf8',
 );
+
+/** Every form presented in a sheet. All must dismiss on the same rule. */
+const SHEET_FORMS = [
+  'apps/web/src/app/app/workspaces/[workspaceId]/create-content-form.tsx',
+  'apps/web/src/app/app/create-workspace-form.tsx',
+  'apps/web/src/app/app/workspaces/[workspaceId]/rename-workspace-form.tsx',
+];
+
+function formSource(path: string): string {
+  return readFileSync(join(process.cwd(), path), 'utf8');
+}
+
 const CSS = readFileSync(join(process.cwd(), 'apps/web/src/app/globals.css'), 'utf8');
 
 describe('the form works without JavaScript', () => {
@@ -50,14 +62,20 @@ describe('dismissal follows the action result, not the click', () => {
     expect(SHEET).not.toMatch(/addEventListener\('submit'/);
   });
 
-  it('the form closes only when the action returned no error', () => {
-    expect(FORM).toMatch(/if \(state\.error \|\| state\.fieldErrors\) return;/);
-    expect(FORM).toMatch(/close\(\)/);
+  it('the shared hook closes only when the action returned no error', () => {
+    expect(HOOK).toMatch(/if \(state\.error \|\| state\.fieldErrors\) return;/);
+    expect(HOOK).toMatch(/close\(\)/);
   });
 
-  it('the form waits for the action to settle', () => {
+  it('the shared hook waits for the action to settle', () => {
     // Closing while isPending would tear the form down mid-submit.
-    expect(FORM).toMatch(/if \(!submitted\.current \|\| isPending\) return;/);
+    expect(HOOK).toMatch(/if \(!submitted\.current \|\| isPending\) return;/);
+  });
+
+  it.each(SHEET_FORMS)('%s uses the shared rule rather than its own', (path) => {
+    // Three copies of this logic is three chances to get it wrong in only one
+    // of them, where the mistake is invisible until a validation error is lost.
+    expect(formSource(path)).toMatch(/useCloseOnSuccess\(isPending, state\)/);
   });
 });
 

@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 
 import type { WorkspaceFormState } from '@/app/app/workspace-actions';
+import { useCloseOnSuccess } from '@/components/use-close-on-success';
 import { Button, Field, Input, Notice } from '@/components/ui';
 
 interface RenameWorkspaceFormProps {
@@ -19,6 +20,8 @@ interface RenameWorkspaceFormProps {
  */
 export function RenameWorkspaceForm({ action, currentName }: RenameWorkspaceFormProps) {
   const [state, formAction, isPending] = useActionState<WorkspaceFormState, FormData>(action, {});
+
+  useCloseOnSuccess(isPending, state);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

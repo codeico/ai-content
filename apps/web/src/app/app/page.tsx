@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { CreateWorkspaceForm } from '@/app/app/create-workspace-form';
 import { Chevron, EmptyState, PageHeader } from '@/components/ui';
+import { Sheet } from '@/components/sheet';
 import { listWorkspacesForUser } from '@/server/repositories/workspace-repository';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
@@ -68,7 +69,9 @@ export default async function AppPage() {
         </section>
 
         <aside className="md:pt-0">
-          <CreateWorkspaceForm />
+          <Sheet trigger="New workspace" title="New workspace">
+            <CreateWorkspaceForm />
+          </Sheet>
         </aside>
       </div>
     </div>

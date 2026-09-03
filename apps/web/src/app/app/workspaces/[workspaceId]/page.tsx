@@ -219,7 +219,9 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
                   What this workspace is about and how it should sound.
                 </p>
               </div>
-              <RenameWorkspaceForm action={boundUpdateWorkspace} currentName={workspace.name} />
+              <Sheet trigger="Rename workspace" title="Rename workspace">
+                <RenameWorkspaceForm action={boundUpdateWorkspace} currentName={workspace.name} />
+              </Sheet>
               <DeleteWorkspaceButton
                 action={boundDeleteWorkspace}
                 workspaceName={workspace.name}

@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 
 import type { WorkspaceFormState } from '@/app/app/workspace-actions';
 import { createWorkspace } from '@/app/app/workspace-actions';
+import { useCloseOnSuccess } from '@/components/use-close-on-success';
 import { Button, Field, Input, Notice } from '@/components/ui';
 
 /**
@@ -18,10 +19,10 @@ export function CreateWorkspaceForm() {
     {},
   );
 
-  return (
-    <form action={formAction} className="flex flex-col gap-4 border-t border-line pt-5">
-      <h2 className="font-medium">New workspace</h2>
+  useCloseOnSuccess(isPending, state);
 
+  return (
+    <form action={formAction} className="flex flex-col gap-4">
       {state.error ? <Notice tone="error">{state.error}</Notice> : null}
 
       <Field
