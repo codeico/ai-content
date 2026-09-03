@@ -69,14 +69,22 @@ export default async function WorkspaceProfilePage({ params }: WorkspaceProfileP
   }
 
   const supabase = await createServerClient();
-  const workspace = await getWorkspaceForUser(supabase, idResult.data, user.id);
+
+  // Both reads are independently scoped by RLS — workspace_profiles has its
+  // own membership predicate — so they overlap instead of costing two round
+  // trips in series (~120ms each against the remote database).
+  const [workspace, profile] = await Promise.all([
+    getWorkspaceForUser(supabase, idResult.data, user.id),
+    getProfileForWorkspace(supabase, idResult.data),
+  ]);
 
   // null for both "missing" and "not a member": a 404 never confirms existence.
+  // Still decided before anything renders; the profile is discarded unread
+  // when the workspace is not visible.
   if (!workspace) {
     notFound();
   }
 
-  const profile = await getProfileForWorkspace(supabase, workspace.id);
   // The membership column is `text` in the database; anything other than
   // 'owner' degrades to the least privileged role rather than widening access.
   const role: WorkspaceRole = workspace.role === 'owner' ? 'owner' : 'member';

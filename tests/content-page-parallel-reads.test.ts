@@ -15,13 +15,22 @@ import { describe, expect, it } from 'vitest';
  * reads must not become reads that happen WITHOUT an authorisation check. The
  * checks still run before anything renders, and this file holds that line.
  */
-const PAGE = readFileSync(
-  join(process.cwd(), 'apps/web/src/app/app/workspaces/[workspaceId]/content/[contentId]/page.tsx'),
-  'utf8',
-);
+function pageSource(path: string): string {
+  // Comments stripped: these assertions are about code, and the comments in
+  // these files quote the very patterns being forbidden.
+  return readFileSync(join(process.cwd(), path), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+}
 
-/** The page body, excluding the comment block that explains the design. */
-const CODE = PAGE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CONTENT_PAGE = 'apps/web/src/app/app/workspaces/[workspaceId]/content/[contentId]/page.tsx';
+const WORKSPACE_PAGE = 'apps/web/src/app/app/workspaces/[workspaceId]/page.tsx';
+const PROFILE_PAGE = 'apps/web/src/app/app/workspaces/[workspaceId]/profile/page.tsx';
+
+/** Every page that reads more than one row set, and so must overlap them. */
+const MULTI_READ_PAGES = [CONTENT_PAGE, WORKSPACE_PAGE, PROFILE_PAGE];
+
+const CODE = pageSource(CONTENT_PAGE);
 
 describe('the reads overlap', () => {
   it('issues them in one Promise.all rather than a chain', () => {
@@ -102,5 +111,48 @@ describe('every parallel read is scoped by the workspace id', () => {
     for (const call of calls) {
       expect(call).toMatch(/workspaceIdResult\.data|workspace\.id/);
     }
+  });
+});
+
+describe('every multi-read page overlaps its reads', () => {
+  // The content page defect was not unique to it: the workspace and profile
+  // pages chained the membership check ahead of reads that RLS already gates,
+  // paying a round trip each to enforce nothing extra. This rule is stated
+  // once so a fourth page cannot quietly reintroduce it.
+  it.each(MULTI_READ_PAGES)('%s issues its reads together', (path) => {
+    const code = pageSource(path);
+
+    expect(code).toMatch(/await Promise\.all\(\[/);
+  });
+
+  it.each(MULTI_READ_PAGES)('%s has no stray sequential repository read', (path) => {
+    const code = pageSource(path);
+    // getAuthenticatedUser is excluded: it must resolve before any query runs.
+    const strays = [...code.matchAll(/await (get|list|count)[A-Za-z]+\(/g)]
+      .map((m) => m[0])
+      .filter((call) => !call.includes('getAuthenticatedUser'));
+
+    expect(strays).toEqual([]);
+  });
+
+  it.each(MULTI_READ_PAGES)('%s still decides visibility before rendering', (path) => {
+    const code = pageSource(path);
+    const check = code.search(/if \(!workspace\)/);
+    const parallel = code.indexOf('await Promise.all([');
+
+    expect(check).toBeGreaterThan(-1);
+    // The check reads a resolved value, so it must come after the reads start
+    // and before anything renders.
+    expect(check).toBeGreaterThan(parallel);
+    expect(code.slice(check)).toMatch(/notFound\(\)/);
+  });
+
+  it.each(MULTI_READ_PAGES)('%s validates the workspace id before querying', (path) => {
+    const code = pageSource(path);
+    const validation = code.search(/idResult|workspaceIdResult/);
+    const parallel = code.indexOf('await Promise.all([');
+
+    expect(validation).toBeGreaterThan(-1);
+    expect(validation).toBeLessThan(parallel);
   });
 });

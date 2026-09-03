@@ -57,15 +57,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
   }
 
   const supabase = await createServerClient();
-  const workspace = await getWorkspaceForUser(supabase, idResult.data, user.id);
 
-  // null for both "missing" and "not a member": a 404 never confirms existence.
-  if (!workspace) {
-    notFound();
-  }
-
-  // Independent of each other and both already gated by the membership check
-  // above, so they overlap instead of adding two round trips in series.
   // The cursor is a position in the list, not an offset. It is read from the
   // query string so "load more" is a plain link that works without JS and can
   // be shared or reloaded.
@@ -75,15 +67,29 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
   // — rather than failing the whole request.
   const cursor = parseContentCursor(search.after, search.afterId);
 
-  // All three are independent and already gated by the membership check above.
+  // All four reads are independently scoped by RLS: every table's SELECT
+  // policy gates on workspace_ids_for_current_user(), so a non-member gets
+  // zero rows from each one whatever the order. Waiting for the membership
+  // check before starting the other three bought nothing the policies do not
+  // already guarantee, and cost a full round trip (~120ms against the remote
+  // database) to do it.
+  //
   // Counts come from the database, not from tallying the page: once the list
   // is paginated, counting rows in hand would report "3 drafts" for a
   // workspace holding 300.
-  const [page, profile, counts] = await Promise.all([
-    listContentForWorkspace(supabase, workspace.id, { cursor }),
-    getProfileForWorkspace(supabase, workspace.id),
-    countContentByStatus(supabase, workspace.id),
+  const [workspace, page, profile, counts] = await Promise.all([
+    getWorkspaceForUser(supabase, idResult.data, user.id),
+    listContentForWorkspace(supabase, idResult.data, { cursor }),
+    getProfileForWorkspace(supabase, idResult.data),
+    countContentByStatus(supabase, idResult.data),
   ]);
+
+  // null for both "missing" and "not a member": a 404 never confirms existence.
+  // Still decided before anything renders; the other three results are simply
+  // discarded when the workspace is not visible.
+  if (!workspace) {
+    notFound();
+  }
 
   const content = page.items;
 
