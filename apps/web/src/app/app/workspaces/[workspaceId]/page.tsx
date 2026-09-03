@@ -58,8 +58,12 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     notFound();
   }
 
-  const content = await listContentForWorkspace(supabase, workspace.id);
-  const profile = await getProfileForWorkspace(supabase, workspace.id);
+  // Independent of each other and both already gated by the membership check
+  // above, so they overlap instead of adding two round trips in series.
+  const [content, profile] = await Promise.all([
+    listContentForWorkspace(supabase, workspace.id),
+    getProfileForWorkspace(supabase, workspace.id),
+  ]);
   const counts = { draft: 0, ready: 0, archived: 0 };
   for (const item of content) counts[item.status]++;
 
