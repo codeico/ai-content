@@ -1,3 +1,4 @@
+import { parseContentCursor } from '@ai-content/shared/content';
 import { workspaceIdSchema } from '@ai-content/shared/workspace';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -68,10 +69,11 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
   // The cursor is a position in the list, not an offset. It is read from the
   // query string so "load more" is a plain link that works without JS and can
   // be shared or reloaded.
-  const cursor =
-    typeof search.after === 'string' && typeof search.afterId === 'string'
-      ? { created_at: search.after, id: search.afterId }
-      : null;
+  // Validated, not trusted: the cursor becomes part of a PostgREST filter
+  // expression. A malformed one (stale bookmark, typo, injection attempt) is
+  // rejected here and falls back to the newest page — the list the user wants
+  // — rather than failing the whole request.
+  const cursor = parseContentCursor(search.after, search.afterId);
 
   // All three are independent and already gated by the membership check above.
   // Counts come from the database, not from tallying the page: once the list

@@ -119,6 +119,33 @@ export const contentDescriptionSchema = z
 /** Route/param ids are attacker-controlled; reject non-UUIDs before any query. */
 export const contentIdSchema = z.uuid();
 
+/**
+ * A pagination cursor as it arrives in the query string.
+ *
+ * The cursor is user input that becomes part of a PostgREST filter expression,
+ * so it is validated to exactly the shape the sort key has: an ISO timestamp
+ * and a UUID. Anything else — a typo, a stale bookmark, an injection attempt —
+ * is rejected here and the caller falls back to the first page rather than
+ * failing the whole request.
+ */
+export const contentCursorSchema = z.object({
+  created_at: z.string().datetime({ offset: true }),
+  id: z.uuid(),
+});
+
+export type ContentCursorInput = z.infer<typeof contentCursorSchema>;
+
+/**
+ * Parses a cursor pair, returning null for anything malformed.
+ *
+ * Null means "start from the newest", which is what a user with a broken link
+ * wants: the list they were looking at, not an error page.
+ */
+export function parseContentCursor(createdAt: unknown, id: unknown): ContentCursorInput | null {
+  const parsed = contentCursorSchema.safeParse({ created_at: createdAt, id });
+  return parsed.success ? parsed.data : null;
+}
+
 export const createContentSchema = z.object({
   title: contentTitleSchema,
 });
