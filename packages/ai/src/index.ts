@@ -1,6 +1,7 @@
 export { createAIProvider } from './create-provider.ts';
 export {
   DEFAULT_TIMEOUT_MS,
+  isBodyTransportFailure,
   normalizeBaseUrl,
   OpenAICompatibleProvider,
   type OpenAICompatibleProviderOptions,

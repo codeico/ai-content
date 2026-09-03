@@ -87,84 +87,122 @@ export class OpenAICompatibleProvider implements AIProvider {
 
   private async attempt(request: AIChatRequest): Promise<AIChatResponse> {
     const controller = new AbortController();
+    // Covers the body read as well as the connection. `fetch` resolves when
+    // headers arrive, so clearing the timer there leaves `response.json()`
+    // reading an open socket with no deadline — a server that sends headers
+    // and then stalls would hang the caller indefinitely.
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timedOut = () => controller.signal.aborted;
 
-    let response: Response;
     try {
-      response = await this.fetchImpl(this.url, {
-        method: 'POST',
-        headers: {
-          Authorization: this.authorization(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: request.model,
-          messages: request.messages,
-          ...(request.temperature !== undefined && { temperature: request.temperature }),
-          ...(request.maxOutputTokens !== undefined && { max_tokens: request.maxOutputTokens }),
-        }),
-        signal: controller.signal,
-      });
-    } catch (error) {
-      if (controller.signal.aborted) {
-        throw new AIError('timeout', `AI request timed out after ${this.timeoutMs}ms.`);
+      let response: Response;
+      try {
+        response = await this.fetchImpl(this.url, {
+          method: 'POST',
+          headers: {
+            Authorization: this.authorization(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: request.model,
+            messages: request.messages,
+            ...(request.temperature !== undefined && { temperature: request.temperature }),
+            ...(request.maxOutputTokens !== undefined && { max_tokens: request.maxOutputTokens }),
+          }),
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (timedOut()) {
+          throw new AIError('timeout', `AI request timed out after ${this.timeoutMs}ms.`);
+        }
+        // Driver errors can embed the request URL (and undici chains a nested
+        // `cause` with socket details). Keep only the error's name and code for
+        // diagnosis; nothing upstream-shaped, including the URL, reaches callers.
+        throw new AIError(
+          'network',
+          'AI request failed to reach the endpoint.',
+          undefined,
+          describeNetworkFailure(error),
+        );
       }
-      // Driver errors can embed the request URL (and undici chains a nested
-      // `cause` with socket details). Keep only the error's name and code for
-      // diagnosis; nothing upstream-shaped, including the URL, reaches callers.
-      throw new AIError(
-        'network',
-        'AI request failed to reach the endpoint.',
-        undefined,
-        describeNetworkFailure(error),
-      );
+
+      if (!response.ok) {
+        throw httpError(response);
+      }
+
+      let json: unknown;
+      try {
+        json = await response.json();
+      } catch (error) {
+        if (timedOut()) {
+          throw new AIError('timeout', `AI request timed out after ${this.timeoutMs}ms.`);
+        }
+        // A body that dies mid-stream is a transport failure, not a malformed
+        // payload: the endpoint never finished saying what it meant, so this
+        // is worth retrying where a genuine syntax error is not.
+        if (isBodyTransportFailure(error)) {
+          throw new AIError(
+            'network',
+            'AI response body ended before it was complete.',
+            response.status,
+            describeNetworkFailure(error),
+          );
+        }
+        throw new AIError(
+          'malformed_response',
+          'AI endpoint returned non-JSON body.',
+          response.status,
+        );
+      }
+
+      const parsed = completionSchema.safeParse(json);
+      if (!parsed.success) {
+        throw new AIError(
+          'malformed_response',
+          'AI endpoint returned an unexpected response shape.',
+          response.status,
+        );
+      }
+
+      const choice = parsed.data.choices[0];
+      if (!choice) {
+        throw new AIError(
+          'malformed_response',
+          'AI endpoint returned no choices.',
+          response.status,
+        );
+      }
+      const usage = parsed.data.usage;
+
+      return {
+        text: choice.message.content ?? '',
+        model: parsed.data.model ?? request.model,
+        ...(choice.finish_reason != null && { finishReason: choice.finish_reason }),
+        ...(usage && {
+          usage: {
+            ...(usage.prompt_tokens !== undefined && { inputTokens: usage.prompt_tokens }),
+            ...(usage.completion_tokens !== undefined && { outputTokens: usage.completion_tokens }),
+            ...(usage.total_tokens !== undefined && { totalTokens: usage.total_tokens }),
+          },
+        }),
+      };
     } finally {
       clearTimeout(timer);
     }
-
-    if (!response.ok) {
-      throw httpError(response);
-    }
-
-    let json: unknown;
-    try {
-      json = await response.json();
-    } catch {
-      throw new AIError(
-        'malformed_response',
-        'AI endpoint returned non-JSON body.',
-        response.status,
-      );
-    }
-
-    const parsed = completionSchema.safeParse(json);
-    if (!parsed.success) {
-      throw new AIError(
-        'malformed_response',
-        'AI endpoint returned an unexpected response shape.',
-        response.status,
-      );
-    }
-
-    const choice = parsed.data.choices[0];
-    if (!choice) {
-      throw new AIError('malformed_response', 'AI endpoint returned no choices.', response.status);
-    }
-    const usage = parsed.data.usage;
-
-    return {
-      text: choice.message.content ?? '',
-      model: parsed.data.model ?? request.model,
-      ...(choice.finish_reason != null && { finishReason: choice.finish_reason }),
-      ...(usage && {
-        usage: {
-          ...(usage.prompt_tokens !== undefined && { inputTokens: usage.prompt_tokens }),
-          ...(usage.completion_tokens !== undefined && { outputTokens: usage.completion_tokens }),
-          ...(usage.total_tokens !== undefined && { totalTokens: usage.total_tokens }),
-        },
-      }),
-    };
   }
+}
+
+/**
+ * Distinguishes "the socket died mid-body" from "the body was not JSON".
+ * Undici reports the former as a TypeError whose cause carries a socket code;
+ * a JSON syntax error carries neither.
+ */
+export function isBodyTransportFailure(error: unknown): boolean {
+  if (error instanceof SyntaxError) return false;
+  if (!(error instanceof Error)) return false;
+  const code = errorCode(error.cause) ?? errorCode(error);
+  if (code) return true;
+  return /terminated|aborted|socket|closed/i.test(error.message);
 }
 
 /**
