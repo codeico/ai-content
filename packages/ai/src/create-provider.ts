@@ -3,6 +3,14 @@ import { loadFutureProviderEnv, type EnvSource } from '@ai-content/shared/env';
 import { OpenAICompatibleProvider } from './openai-compatible-provider.ts';
 import { AIError, type AIProvider } from './provider.ts';
 
+/** Per-call tuning a caller may pass; credentials never come this way. */
+export interface CreateAIProviderOptions {
+  /** Per-attempt timeout in ms. */
+  timeoutMs?: number;
+  /** Extra attempts after the first, for 429/5xx/network only. */
+  maxRetries?: number;
+}
+
 /**
  * Builds the application's AIProvider from server-only environment.
  *
@@ -11,7 +19,10 @@ import { AIError, type AIProvider } from './provider.ts';
  * guard as createSupabaseAdminClient: defence in depth on top of the env
  * variables having no NEXT_PUBLIC_ prefix.
  */
-export function createAIProvider(source: EnvSource = process.env): AIProvider {
+export function createAIProvider(
+  source: EnvSource = process.env,
+  options: CreateAIProviderOptions = {},
+): AIProvider {
   if (typeof (globalThis as { window?: unknown }).window !== 'undefined') {
     throw new AIError(
       'not_configured',
@@ -31,5 +42,5 @@ export function createAIProvider(source: EnvSource = process.env): AIProvider {
     );
   }
 
-  return new OpenAICompatibleProvider({ baseUrl, apiKey });
+  return new OpenAICompatibleProvider({ baseUrl, apiKey, ...options });
 }
