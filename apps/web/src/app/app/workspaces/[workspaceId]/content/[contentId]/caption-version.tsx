@@ -4,6 +4,7 @@ import type { CaptionStatus } from '@ai-content/shared/content/caption';
 import { useActionState } from 'react';
 
 import type { CaptionActionState } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-actions';
+import { CopyCaptionButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/copy-caption-button';
 import { Button, CaptionStatusMark, Notice } from '@/components/ui';
 
 interface CaptionVersionProps {
@@ -50,14 +51,18 @@ export function CaptionVersion({ action, caption, createdLabel }: CaptionVersion
           {caption.model_name}
         </span>
 
-        {isActive ? null : (
-          <form action={formAction} className="flex min-w-0 flex-col gap-2">
-            {state.error ? <Notice tone="error">{state.error}</Notice> : null}
-            <Button type="submit" variant="quiet" disabled={isPending}>
-              {isPending ? 'Selecting…' : 'Use this one'}
-            </Button>
-          </form>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <CopyCaptionButton body={caption.body} />
+
+          {isActive ? null : (
+            <form action={formAction} className="flex min-w-0 flex-col gap-2">
+              {state.error ? <Notice tone="error">{state.error}</Notice> : null}
+              <Button type="submit" variant="quiet" disabled={isPending}>
+                {isPending ? 'Selecting…' : 'Use this one'}
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
     </li>
   );
