@@ -144,3 +144,38 @@ optional params), response normalisation, every error class, retry
 behaviour with fake timers, and explicit assertions that the API key and the
 word "Authorization" never appear in errors, responses, or the serialised
 provider.
+
+`tests/ai-unconfigured.test.ts` pins the degradation contract from the
+Environment section: with no credentials at all — the state of every developer
+machine and of CI — `createAIProvider()` raises `AIError('not_configured')`
+naming every missing variable, rejects a malformed base URL at configuration
+time rather than on the first request, and exposes no key on the constructed
+instance.
+
+`tests/ai-vendor-neutrality.test.ts` enforces the "OpenRouter is not an
+architectural dependency" rule mechanically, over `packages/ai` **and** the
+application surface (`apps/web/src`, `packages/shared/src`): no vendor SDK
+import, no vendor-specific header or identifier, no vendor environment
+variable, no hardcoded model name, and exactly two outgoing headers. Scanning
+the application too matters because neutrality is lost at the first caller that
+hardcodes a model or reads a vendor key directly instead of going through
+`createAIProvider()`.
+
+## Where prompt construction belongs
+
+Prompts are **application** concern, not router concern. `packages/ai` knows
+the wire format and nothing about workspaces, content, or captions; adding
+domain vocabulary to it would make the router application-aware and defeat the
+replaceability the layer diagram exists to protect.
+
+The editorial context a prompt needs is stored configuration, not literal
+prompt text: `public.workspace_profiles` (Phase 7A) holds the workspace's
+niche, description, target audience, tone, writing style, content goals, and
+restrictions, per MASTER_PRODUCT_SPEC §17. It is owner-editable and
+member-readable, and every field is optional.
+
+As of Phase 7A **nothing reads that table for generation.** The first feature
+that needs a completion is responsible for turning a profile into an
+`AIChatRequest`, and that translation belongs above `@ai-content/ai` — either
+in the calling server module or in a shared helper that takes plain fields —
+so the router keeps depending on nothing but its own contract.
