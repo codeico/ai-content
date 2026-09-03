@@ -52,3 +52,39 @@ describe('CODING_RULES cites tests that exist', () => {
     expect(RULES).toMatch(/CAPTION_MAX_VERSIONS/);
   });
 });
+
+describe('the citation check works in both directions', () => {
+  /**
+   * The forward direction was already covered: a rule must not cite a test
+   * that has been deleted. This is the reverse, which is the one that
+   * actually slipped - a rule can state a requirement while nothing points at
+   * the gate enforcing it, so a reader cannot tell whether it is enforced or
+   * merely aspirational.
+   *
+   * Same one-directional gap that let the README call the PWA "planned" after
+   * it shipped, and that left the captions deferral reasoning unprotected.
+   */
+  const RULES_WITH_GATES = [
+    { section: 'A passing test is not a working test', gate: 'tests/gate-strength.test.ts' },
+    { section: 'Docs drift in two directions', gate: 'tests/readme-accuracy.test.ts' },
+    { section: 'RLS decides rows, never columns', gate: 'tests/update-policy-guards.test.ts' },
+    {
+      section: 'Query-string input is external input',
+      gate: 'tests/query-interpolation-gate.test.ts',
+    },
+  ];
+
+  it.each(RULES_WITH_GATES)('$section names $gate', ({ section, gate }) => {
+    const start = RULES.indexOf(section);
+    expect(start, `section "${section}" should exist`).toBeGreaterThan(-1);
+
+    // Look within the section, not the whole file: a citation elsewhere does
+    // not tell this rule's reader where its enforcement lives.
+    const body = RULES.slice(start, start + 2600);
+    expect(body).toContain(gate);
+  });
+
+  it.each(RULES_WITH_GATES)('$gate exists on disk', ({ gate }) => {
+    expect(existsSync(join(ROOT, gate))).toBe(true);
+  });
+});

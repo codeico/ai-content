@@ -1197,6 +1197,9 @@ Rule: **when a file contains several things of the same kind, an existence
 assertion is not a gate.** Count them, or check each one. `toMatch` over a
 whole file is only safe when exactly one occurrence can exist.
 
+`tests/gate-strength.test.ts` holds the repaired gates to their repaired form
+and checks that every rule cited here still points at a test that exists.
+
 Corollary: a mutation that survives usually means the test is wrong, not that
 the mutation is harmless — the mutation that survives is precisely the
 regression nobody will notice.
@@ -1503,6 +1506,31 @@ Phase scope
 documentation terkait harus diperbarui.
 
 Code dan docs tidak boleh diverge tanpa alasan.
+
+## 60.1 Docs drift in two directions; gates usually cover one
+
+The obvious drift is a doc claiming something unbuilt. The one that actually
+happened twice this session is the reverse — the doc failing to keep up with
+work that shipped:
+
+- The README listed the PWA under "Planned (later phases)" after the service
+  worker, manifest and offline page were live in production. `readme-accuracy`
+  existed and passed, because every assertion checked that a **claim was
+  backed by code**. Nothing checked that shipped work stopped being listed as
+  future.
+- `DATABASE_SCHEMA` §17 lists `model_provider`, `hashtags`, `call_to_action`
+  and `generated_by` on `captions`; the migration ships none of them. §37
+  records each as a deliberate deferral with its reason, and that reasoning is
+  load-bearing — a reviewer read the mismatch as a doc violation and was only
+  wrong because §37 exists. The gate checked the code side (the migration must
+  not contain `model_provider`) and nothing protected the explanation.
+
+Rule: **a doc gate needs both directions.** For every claim, assert the code
+that makes it true; for every piece of shipped work, assert the doc no longer
+describes it as future. `tests/readme-accuracy.test.ts` and
+`tests/captions-migration.test.ts` enforce both halves for the two cases above. And where a doc explains why something is *absent*,
+gate the explanation — deleting it turns a settled decision back into an open
+question, and the next reader reopens it.
 
 ---
 
