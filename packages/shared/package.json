@@ -9,7 +9,8 @@
     "./workspace": "./src/workspace/workspace.ts",
     "./workspace/profile": "./src/workspace/profile.ts",
     "./content": "./src/content/content.ts",
-    "./content/caption": "./src/content/caption.ts"
+    "./content/caption": "./src/content/caption.ts",
+    "./jobs": "./src/jobs/job.ts"
   },
   "dependencies": {
     "zod": "4.5.4"

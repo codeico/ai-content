@@ -121,6 +121,76 @@ export type Database = {
           },
         ];
       };
+      jobs: {
+        Row: {
+          attempt_count: number;
+          cancel_requested: boolean;
+          created_at: string;
+          dedup_key: string | null;
+          id: string;
+          last_error_code: string | null;
+          locked_at: string | null;
+          locked_by: string | null;
+          max_attempts: number;
+          payload: Json;
+          result: Json | null;
+          scheduled_for: string;
+          status: string;
+          type: string;
+          updated_at: string;
+          workspace_id: string;
+        };
+        // Deliberately narrower than Row. There is no user INSERT or UPDATE
+        // policy on jobs: every write goes through a security definer function
+        // (enqueue_job, cancel_job, claim_job, complete_job, fail_job). These
+        // shapes exist so the type system is honest about the table, not to
+        // invite `.from('jobs').insert()` — which RLS will reject.
+        Insert: {
+          attempt_count?: number;
+          cancel_requested?: boolean;
+          created_at?: string;
+          dedup_key?: string | null;
+          id?: string;
+          last_error_code?: string | null;
+          locked_at?: string | null;
+          locked_by?: string | null;
+          max_attempts?: number;
+          payload?: Json;
+          result?: Json | null;
+          scheduled_for?: string;
+          status?: string;
+          type: string;
+          updated_at?: string;
+          workspace_id: string;
+        };
+        Update: {
+          attempt_count?: number;
+          cancel_requested?: boolean;
+          created_at?: string;
+          dedup_key?: string | null;
+          id?: string;
+          last_error_code?: string | null;
+          locked_at?: string | null;
+          locked_by?: string | null;
+          max_attempts?: number;
+          payload?: Json;
+          result?: Json | null;
+          scheduled_for?: string;
+          status?: string;
+          type?: string;
+          updated_at?: string;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'jobs_workspace_id_fkey';
+            columns: ['workspace_id'];
+            isOneToOne: false;
+            referencedRelation: 'workspaces';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -268,9 +338,48 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      workspace_jobs: {
+        Row: {
+          attempt_count: number;
+          cancel_requested: boolean;
+          created_at: string;
+          id: string;
+          last_error_code: string | null;
+          max_attempts: number;
+          scheduled_for: string;
+          status: string;
+          type: string;
+          updated_at: string;
+          workspace_id: string;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
+      cancel_job: { Args: { job_id: string }; Returns: boolean };
+      cancel_workspace_jobs: { Args: { target_workspace_id: string }; Returns: number };
+      claim_job: {
+        Args: { worker_token: string };
+        Returns: Database['public']['Tables']['jobs']['Row'] | null;
+      };
+      complete_job: {
+        Args: { job_id: string; worker_token: string; job_result?: Json | null };
+        Returns: boolean;
+      };
+      enqueue_job: {
+        Args: {
+          target_workspace_id: string;
+          job_type: string;
+          job_payload?: Json;
+          job_dedup_key?: string | null;
+          run_at?: string | null;
+        };
+        Returns: string;
+      };
+      fail_job: {
+        Args: { job_id: string; worker_token: string; error_code: string; retryable?: boolean };
+        Returns: string | null;
+      };
       workspace_ids_for_current_user: { Args: never; Returns: string[] };
     };
     Enums: {
