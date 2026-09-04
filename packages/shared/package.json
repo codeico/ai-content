@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./env": "./src/env/index.ts",
+    "./env/browser": "./src/env/browser.ts",
     "./auth": "./src/auth/credentials.ts",
     "./workspace": "./src/workspace/workspace.ts",
     "./workspace/profile": "./src/workspace/profile.ts",

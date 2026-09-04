@@ -357,6 +357,14 @@ export type Database = {
     };
     Functions: {
       cancel_job: { Args: { job_id: string }; Returns: boolean };
+      confirm_content_media: {
+        Args: {
+          target_workspace_id: string;
+          target_content_id: string;
+          target_storage_key: string;
+        };
+        Returns: boolean;
+      };
       cancel_workspace_jobs: { Args: { target_workspace_id: string }; Returns: number };
       claim_job: {
         Args: { worker_token: string };
@@ -379,6 +387,21 @@ export type Database = {
       fail_job: {
         Args: { job_id: string; worker_token: string; error_code: string; retryable?: boolean };
         Returns: string | null;
+      };
+      release_content_media: {
+        Args: {
+          target_workspace_id: string;
+          target_content_id: string;
+        };
+        Returns: boolean;
+      };
+      reserve_content_media: {
+        Args: {
+          target_workspace_id: string;
+          target_content_id: string;
+          file_extension: string;
+        };
+        Returns: string;
       };
       workspace_ids_for_current_user: { Args: never; Returns: string[] };
     };

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { CONTENT_SOURCE_TYPES, MEDIA_STATUSES } from '../packages/shared/src/content/content.ts';
+import { CONTENT_SOURCE_TYPES } from '../packages/shared/src/content/content.ts';
 
 /**
  * Structural pins on the Phase 6 migration. Same technique as
@@ -58,9 +58,13 @@ describe('content source & media migration', () => {
     expect(checkList('source_type').sort()).toEqual([...CONTENT_SOURCE_TYPES].sort());
   });
 
-  it('constrains media_status to exactly the shared list, defaulting to external_only', () => {
+  it('ships the honest Phase 6 subset, defaulting to external_only', () => {
     expect(code).toMatch(/media_status text not null default 'external_only'/);
-    expect(checkList('media_status').sort()).toEqual([...MEDIA_STATUSES].sort());
+    // This test describes the historical migration. Later phases widen the
+    // CHECK in new migrations and carry their own parity test.
+    expect(checkList('media_status').sort()).toEqual(
+      ['external_only', 'available', 'missing'].sort(),
+    );
   });
 
   it('refuses non-http(s) links at the database as well as in Zod', () => {

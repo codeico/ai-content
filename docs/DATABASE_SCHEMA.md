@@ -705,16 +705,23 @@ DELETED
 
 Media lifecycle harus terpisah dari content workflow state.
 
-> **Implemented subset (Phase 6, decided 2026-09-03).** The live `media_status`
-> column stores lowercase values and only the three states the product can
-> honestly produce today: `external_only` (default; storage pair must be null),
-> `available` (storage pair must be set), `missing` (pair may be kept or
-> cleared). Lowercase matches the existing `status` column convention
-> (`draft`/`ready`/`archived`), so the uppercase spelling above is
-> documentation style, not a target. TEMPORARY, PROCESSING and DELETED are
-> not modelled: nothing can put a row into those states until a storage or
-> job phase exists. Each is a future `check` widening in a new migration,
-> never a rewrite of the applied ones.
+> **Implemented subset (Phase 6, decided 2026-09-03; widened by Phase 8,
+> 2026-09-05).** The live `media_status` column stores lowercase values.
+> Phase 6 shipped `external_only` (default; storage pair must be null),
+> `available` (storage pair must be set) and `missing`. Phase 8
+> (`20260904110000_create_content_media_storage.sql`) widened the CHECK with
+> `temporary` — a server-generated object key has been reserved and the
+> browser is uploading straight to the private `content-media` bucket — and
+> removed the column, together with `storage_provider`/`storage_key`, from
+> every client role's INSERT/UPDATE grant. Only `reserve_content_media`,
+> `confirm_content_media` and `release_content_media` (SECURITY DEFINER) move
+> these columns; see `docs/STATE_MACHINES.md §2` for the transitions each one
+> owns and what it proves first. Lowercase matches the existing `status`
+> column convention (`draft`/`ready`/`archived`), so the uppercase spelling
+> above is documentation style, not a target. PROCESSING and DELETED are not
+> modelled: nothing can put a row into those states until a job phase exists.
+> Each is a future `check` widening in a new migration, never a rewrite of the
+> applied ones.
 
 ---
 

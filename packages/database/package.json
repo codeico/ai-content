@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./client": "./src/client/index.ts"
+    "./client": "./src/client/index.ts",
+    "./client/browser": "./src/client/browser.ts"
   },
   "dependencies": {
     "@ai-content/shared": "*",

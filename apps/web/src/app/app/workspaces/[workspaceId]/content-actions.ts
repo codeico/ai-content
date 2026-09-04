@@ -20,6 +20,7 @@ import {
   updateContentSourceInWorkspace,
 } from '@/server/repositories/content-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
+import { ContentMediaStorageError, removeContentMedia } from '@/server/storage/content-media';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
 
@@ -166,7 +167,6 @@ export async function updateContentSource(
     source_type: formData.get('source_type'),
     source_url: formData.get('source_url') ?? '',
     external_id: formData.get('external_id') ?? '',
-    media_status: formData.get('media_status'),
   });
 
   if (!parsed.success) {
@@ -182,23 +182,8 @@ export async function updateContentSource(
       return { error: NO_ACCESS };
     }
 
-    // `available` means bytes exist at a storage key, which only a storage
-    // phase can assert. An owner may keep it (editing the link on a stored
-    // item) but never move a row into it. The DB check backs this up.
-    if (parsed.data.media_status === 'available') {
-      const existing = await getContentInWorkspace(supabase, workspaceId, contentId);
-
-      if (!existing) {
-        return { error: 'Content not found.' };
-      }
-
-      if (existing.media_status !== 'available') {
-        return {
-          fieldErrors: { media_status: 'Available is set by the system, not by hand.' },
-        };
-      }
-    }
-
+    // media_status is deliberately absent here: it is owned by the storage
+    // verbs (reserve/confirm/release) and never accepted from a form.
     updated = await updateContentSourceInWorkspace(supabase, workspaceId, contentId, parsed.data);
   } catch (error) {
     if (error instanceof ContentRepositoryError) {
@@ -232,15 +217,32 @@ export async function deleteContent(workspaceId: string, contentId: string): Pro
   const detailPath = `/app/workspaces/${workspaceId}/content/${contentId}`;
 
   let deleted = false;
+  let cleanupFailed = false;
 
   try {
     const supabase = await createServerClient();
 
     if (await getWorkspaceForUser(supabase, workspaceId, user.id)) {
-      deleted = await deleteContentInWorkspace(supabase, workspaceId, contentId);
+      const content = await getContentInWorkspace(supabase, workspaceId, contentId);
+
+      if (content?.storage_key) {
+        // Storage API first, then release the reference, then delete the row.
+        // The database trigger refuses the opposite order so a future caller
+        // cannot silently orphan bytes by skipping this sequence.
+        cleanupFailed = !(await removeContentMedia(
+          supabase,
+          workspaceId,
+          contentId,
+          content.storage_key,
+        ));
+      }
+
+      if (content && !cleanupFailed) {
+        deleted = await deleteContentInWorkspace(supabase, workspaceId, contentId);
+      }
     }
   } catch (error) {
-    if (error instanceof ContentRepositoryError) {
+    if (error instanceof ContentRepositoryError || error instanceof ContentMediaStorageError) {
       redirect(detailPath);
     }
 

@@ -53,17 +53,41 @@ Independent of content state, because acquisition runs asynchronously from
 editorial review. An item can be `ready` with no media, or `draft` with media
 already stored.
 
-| State           | Previous                     | Next                        | Phase       |
-| --------------- | ---------------------------- | --------------------------- | ----------- |
-| `external_only` | — (default)                  | `available`, `missing`      | 6 — live    |
-| `available`     | `external_only`, `missing`   | `missing`                   | 6 — live    |
-| `missing`       | `available`, `external_only` | `available`                 | 6 — live    |
+| State           | Previous                     | Next                      | Phase    |
+| --------------- | ---------------------------- | ------------------------- | -------- |
+| `external_only` | — (default)                  | `temporary`               | 6 — live |
+| `temporary`     | `external_only`              | `available`, `external_only` | 8 — live |
+| `available`     | `temporary`                  | `external_only`           | 6 — live |
+| `missing`       | — (reserved, unreachable)    | —                         | 6 — live |
 
-Enforced by `content_available_requires_storage`: `available` requires
-`storage_key`. The database refuses to claim a stored copy that does not exist.
+**Who may write it.** Nobody through the table. Phase 8 removed
+`media_status`, `storage_provider` and `storage_key` from every client role's
+INSERT/UPDATE grant (`anon`, `authenticated`, `service_role`). The only writers
+are three `SECURITY DEFINER` verbs, each of which proves something before it
+moves the row:
 
-Deferred: `TEMPORARY`, `PROCESSING`, `DELETED` — each needs a storage or job
-phase to reach it.
+- `reserve_content_media(ws, content, ext)` — `external_only → temporary`.
+  Generates the object key server-side (`<ws>/<content>/<uuid>.<ext>`); a
+  browser never chooses a path. Idempotent for the same extension; refuses a
+  different extension on an existing reservation.
+- `confirm_content_media(ws, content, key)` — `temporary → available`, only
+  if `storage.objects` already holds that exact key in the private
+  `content-media` bucket. Idempotent once confirmed.
+- `release_content_media(ws, content)` — `temporary|available → external_only`,
+  only after the object is gone from the catalogue. Idempotent.
+
+`missing` stays in the CHECK for forward compatibility but no verb produces it
+yet; a later acquisition phase that detects a vanished object will own that
+transition. The old owner-facing "Media" selector was removed: the form has no
+`media_status` input and the Server Action never reads one.
+
+Still enforced by `content_available_requires_storage`: `available` requires
+`storage_key`. Additionally, `content_storage_before_delete` (BEFORE DELETE,
+`content_reject_stored_delete()`) refuses to delete a row whose `storage_key`
+is set — bytes are removed via the Storage API and released first, so a
+deletion can never orphan an object.
+
+Deferred: `PROCESSING`, `DELETED` — each needs a job phase to reach it.
 
 ## 3. Job lifecycle — owned by `jobs.status`
 

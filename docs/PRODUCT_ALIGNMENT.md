@@ -123,8 +123,9 @@ For the parts that exist, yes, and specifically:
 
 - Workspace isolation is enforced at the database rather than in application
   code, so a missed filter in a future automation path fails closed.
-- `storage_provider` / `storage_key` are a provider-agnostic pair, so R2 is a
-  configuration choice rather than a schema commitment.
+- `storage_provider` / `storage_key` are a provider-agnostic pair. Phase 8 uses
+  Supabase Storage for the MVP, while a future R2 adapter remains possible
+  without a schema change.
 - The AI layer can be repointed without touching domain code.
 - Media lifecycle is already independent of editorial state, which is what lets
   acquisition run asynchronously from review.

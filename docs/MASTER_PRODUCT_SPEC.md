@@ -1436,8 +1436,8 @@ EXTERNAL SERVICES
 │
 ├── Instagram API
 │
-└── Cloudflare R2
-    └── Media Storage
+└── Supabase Storage
+    └── Private Media Storage (MVP)
 ```
 
 ---
@@ -1519,8 +1519,14 @@ Queue abstraction harus memungkinkan provider diganti di masa depan.
 ## Storage
 
 ```text
-Cloudflare R2
+Supabase Storage (private bucket for the MVP)
 ```
+
+Phase 8 deliberately selects Supabase Storage because it shares the product's
+existing auth/RLS control plane and needs no additional provider credentials.
+The domain reference remains `storage_provider` + `storage_key`, so a future
+R2 adapter is possible without changing the content schema. Signed public URLs
+are generated only when needed and are never stored as identity.
 
 Digunakan untuk:
 

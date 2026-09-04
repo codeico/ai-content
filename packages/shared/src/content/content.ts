@@ -47,9 +47,48 @@ export type ContentSourceType = (typeof CONTENT_SOURCE_TYPES)[number];
  * be produced by the product today; `available` needs a storage phase and
  * `missing` is an owner assertion. Must match the same migration's CHECK.
  */
-export const MEDIA_STATUSES = ['external_only', 'available', 'missing'] as const;
+export const MEDIA_STATUSES = ['external_only', 'temporary', 'available', 'missing'] as const;
 
 export type MediaStatus = (typeof MEDIA_STATUSES)[number];
+
+/**
+ * First real storage slice: Reels-ready source media only. Images belong to
+ * thumbnail/creative processing, which has no producer yet. The bucket repeats
+ * this allow-list as its hard boundary.
+ */
+export const CONTENT_MEDIA_TYPES = ['video/mp4', 'video/quicktime'] as const;
+export type ContentMediaType = (typeof CONTENT_MEDIA_TYPES)[number];
+
+/** Supabase Free's current per-file ceiling; also pinned on the bucket. */
+export const CONTENT_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+
+const mediaTypeSchema = z.enum(CONTENT_MEDIA_TYPES, {
+  error: 'Choose an MP4 or MOV video.',
+});
+
+const mediaSizeSchema = z
+  .number({ error: 'Video size is required.' })
+  .int('Video size is invalid.')
+  .positive('Video cannot be empty.')
+  .max(CONTENT_MEDIA_MAX_BYTES, 'Video must be 50 MB or smaller.');
+
+const contentMediaFileSchema = z
+  .object({
+    // Accepted at the boundary because File metadata contains it. It is not
+    // trusted for extension or returned to storage code.
+    name: z.string().optional(),
+    type: mediaTypeSchema,
+    size: mediaSizeSchema,
+  })
+  .transform(({ type, size }) => ({
+    type,
+    size,
+    extension: type === 'video/mp4' ? ('mp4' as const) : ('mov' as const),
+  }));
+
+export type ContentMediaFileInput = z.input<typeof contentMediaFileSchema>;
+export type ContentMediaFile = z.output<typeof contentMediaFileSchema>;
+export type ContentMediaFieldErrors = Partial<Record<'type' | 'size', string>>;
 
 export const CONTENT_SOURCE_URL_MAX_LENGTH = 2048;
 export const CONTENT_EXTERNAL_ID_MAX_LENGTH = 200;
@@ -84,20 +123,12 @@ export const contentExternalIdSchema = z
   .transform((value) => (value === '' ? null : value));
 
 /**
- * What the owner may assert about media. Zod accepts every lifecycle value so
- * a row that a storage phase has marked `available` can still have its link
- * edited; the Server Action refuses any *transition into* `available`, and
- * the database refuses `available` without a storage key regardless.
+ * Media state is owned by the storage verbs (reserve / confirm / release) and
+ * is never accepted from a form. The database excludes the column from the
+ * authenticated UPDATE grant, so this schema deliberately has no
+ * media_status input at all.
  */
-export const mediaStatusSchema = z.enum(MEDIA_STATUSES, {
-  error: 'Availability must be external only, available, or missing.',
-});
-
-/** The subset an owner can choose in the UI; `available` is system-set. */
-export const OWNER_SETTABLE_MEDIA_STATUSES = [
-  'external_only',
-  'missing',
-] as const satisfies readonly MediaStatus[];
+export const mediaStatusSchema = z.enum(MEDIA_STATUSES);
 
 /**
  * Author-written summary of the content, fed to the caption prompt.
@@ -168,7 +199,6 @@ export const updateContentSourceSchema = z.object({
   source_type: contentSourceTypeSchema,
   source_url: contentSourceUrlSchema,
   external_id: contentExternalIdSchema,
-  media_status: mediaStatusSchema,
 });
 
 export type CreateContentInput = z.infer<typeof createContentSchema>;
@@ -241,5 +271,18 @@ export function validateUpdateContentSource(
     : {
         success: false,
         fieldErrors: toFieldErrors(result.error.issues, CONTENT_SOURCE_FIELDS),
+      };
+}
+
+export function validateContentMediaFile(
+  input: unknown,
+): Validation<ContentMediaFile, ContentMediaFieldErrors> {
+  const result = contentMediaFileSchema.safeParse(input);
+
+  return result.success
+    ? { success: true, data: result.data }
+    : {
+        success: false,
+        fieldErrors: toFieldErrors(result.error.issues, ['type', 'size']),
       };
 }

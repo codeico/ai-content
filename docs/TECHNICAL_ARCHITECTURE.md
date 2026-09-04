@@ -216,7 +216,7 @@ Notification Provider
         ▼       ▼        ▼
 
     Storage   Instagram  Other
-      R2         API     Future
+   Supabase      API     Future
 ```
 
 ---
@@ -1437,26 +1437,26 @@ Storage Provider
 
 ↓
 
-Cloudflare R2
+Supabase Storage (MVP)
 ```
 
-Media record di database menyimpan:
+**Provider decision (Phase 8, 2026-09-05).** The MVP uses a private Supabase
+Storage bucket. This reuses the installed client and workspace/RLS authority;
+adding R2 now would add credentials, an S3 signing layer and a second access
+control plane without unlocking a product capability. R2 remains a possible
+future adapter, not the active deployment provider.
+
+The public schema stays provider-neutral and stores only:
 
 ```text
 storage_provider
 
-bucket
-
-object_key
-
-content_type
-
-size
-
-checksum
+storage_key
 ```
 
-Jangan menyimpan public storage URL sebagai satu-satunya identity media.
+The bucket name is adapter-owned (`content-media`). MIME type and size live in
+Storage metadata until a real query needs them in Postgres. Signed URLs are
+short-lived bearer capabilities and are never stored as media identity.
 
 ---
 
@@ -1981,13 +1981,9 @@ REDIS_TOKEN
 
 STORAGE
 
-R2_ACCOUNT_ID
-
-R2_ACCESS_KEY_ID
-
-R2_SECRET_ACCESS_KEY
-
-R2_BUCKET
+No additional provider secret for the MVP. Supabase Storage uses the existing
+`NEXT_PUBLIC_SUPABASE_URL` and user-scoped Supabase session; the private bucket
+and policies are provisioned by migration.
 
 
 APPLICATION
@@ -2050,7 +2046,7 @@ Supabase Project
 Storage:
 
 ```text
-Cloudflare R2
+Supabase Storage (private content-media bucket)
 ```
 
 Queue:

@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Content } from '../apps/web/src/server/repositories/content-repository.ts';
 
 /**
- * Action-level gate for updateContentSource. Zod deliberately accepts
- * `available` (a row already available must keep an editable link), so the
- * refusal of a *transition into* available lives only in the Server Action.
- * The repository and Zod are covered elsewhere; this file pins the ordering
- * of the action's own checks: session → Zod → membership → transition →
+ * Action-level contract for updateContentSource. media_status is owned by
+ * the storage verbs (reserve / confirm / release) and is not a form input:
+ * the action never reads it, never pre-reads the row for it, and never
+ * writes it. The repository and Zod are covered elsewhere; this file pins
+ * the ordering of the action's own checks: session → Zod → membership →
  * write.
  *
  * What is mocked and why:
@@ -125,49 +125,36 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('updateContentSource: media_status transition gate', () => {
-  it('refuses draft → available with a media_status field error and never writes', async () => {
-    const { builder } = arrange(DRAFT_ROW);
-    const write = vi.spyOn(contentRepository, 'updateContentSourceInWorkspace');
-
-    const state = await updateContentSource(
-      WORKSPACE_ID,
-      CONTENT_ID,
-      {},
-      form({ media_status: 'available' }),
-    );
-
-    expect(state.error).toBeUndefined();
-    expect(state.fieldErrors).toEqual({
-      media_status: 'Available is set by the system, not by hand.',
-    });
-    expect(write).not.toHaveBeenCalled();
-    expect(tableWrites(builder)).toEqual([]);
-    // The existing row was read, and read within the workspace.
-    expect(builder.calls).toContainEqual({ method: 'select', args: expect.any(Array) });
-    expect(builder.calls).toContainEqual({ method: 'eq', args: ['workspace_id', WORKSPACE_ID] });
-    expect(builder.calls).toContainEqual({ method: 'eq', args: ['id', CONTENT_ID] });
-    expect(refresh).not.toHaveBeenCalled();
-  });
-
-  it.each(['external_only', 'missing'] as const)(
-    'refuses %s → available: only the current value matters, not the workflow status',
-    async (current) => {
-      const { builder } = arrange({ ...DRAFT_ROW, status: 'ready', media_status: current });
+describe('updateContentSource: media_status is not an input', () => {
+  it.each(['available', 'temporary', 'missing', 'processing'])(
+    'ignores media_status=%s from the form: never written, no pre-read of the row',
+    async (media_status) => {
+      const { builder } = arrange(DRAFT_ROW);
+      const write = vi.spyOn(contentRepository, 'updateContentSourceInWorkspace');
+      const read = vi.spyOn(contentRepository, 'getContentInWorkspace');
 
       const state = await updateContentSource(
         WORKSPACE_ID,
         CONTENT_ID,
         {},
-        form({ media_status: 'available' }),
+        form({ media_status, source_url: 'https://www.tiktok.com/@a/video/9' }),
       );
 
-      expect(state.fieldErrors?.media_status).toBeDefined();
-      expect(tableWrites(builder)).toEqual([]);
+      expect(state).toEqual({});
+      expect(read).not.toHaveBeenCalled();
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(write).toHaveBeenCalledWith(expect.anything(), WORKSPACE_ID, CONTENT_ID, {
+        source_type: 'tiktok',
+        source_url: 'https://www.tiktok.com/@a/video/9',
+        external_id: '2',
+      });
+      expect(write.mock.calls[0]?.[3]).not.toHaveProperty('media_status');
+      expect(tableWrites(builder)).toEqual(['update']);
+      expect(refresh).toHaveBeenCalledTimes(1);
     },
   );
 
-  it('allows available → available (link edit) and reaches the repository write', async () => {
+  it('edits the link on an available row without touching its media state', async () => {
     const { builder } = arrange(AVAILABLE_ROW);
     const write = vi.spyOn(contentRepository, 'updateContentSourceInWorkspace');
 
@@ -175,43 +162,15 @@ describe('updateContentSource: media_status transition gate', () => {
       WORKSPACE_ID,
       CONTENT_ID,
       {},
-      form({ media_status: 'available', source_url: 'https://www.tiktok.com/@a/video/9' }),
+      form({ source_url: 'https://www.tiktok.com/@a/video/9' }),
     );
 
     expect(state).toEqual({});
-    expect(write).toHaveBeenCalledTimes(1);
-    expect(write).toHaveBeenCalledWith(expect.anything(), WORKSPACE_ID, CONTENT_ID, {
+    expect(write.mock.calls[0]?.[3]).toEqual({
       source_type: 'tiktok',
       source_url: 'https://www.tiktok.com/@a/video/9',
       external_id: '2',
-      media_status: 'available',
     });
-    expect(tableWrites(builder)).toEqual(['update']);
-    expect(refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not read the existing row when the requested status is not available', async () => {
-    const { builder } = arrange(DRAFT_ROW);
-    const read = vi.spyOn(contentRepository, 'getContentInWorkspace');
-
-    const state = await updateContentSource(WORKSPACE_ID, CONTENT_ID, {}, form());
-
-    expect(state).toEqual({});
-    expect(read).not.toHaveBeenCalled();
-    expect(tableWrites(builder)).toEqual(['update']);
-  });
-
-  it('allows available → missing (a stored object can be reported gone)', async () => {
-    const { builder } = arrange(AVAILABLE_ROW);
-
-    const state = await updateContentSource(
-      WORKSPACE_ID,
-      CONTENT_ID,
-      {},
-      form({ media_status: 'missing' }),
-    );
-
-    expect(state).toEqual({});
     expect(tableWrites(builder)).toEqual(['update']);
   });
 });
@@ -222,9 +181,9 @@ describe('updateContentSource: access gates run before any repository call', () 
     const client = vi.fn();
     mockedClient.mockImplementation(client);
 
-    await expect(
-      updateContentSource(WORKSPACE_ID, CONTENT_ID, {}, form({ media_status: 'available' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/login');
+    await expect(updateContentSource(WORKSPACE_ID, CONTENT_ID, {}, form())).rejects.toThrow(
+      'NEXT_REDIRECT:/login',
+    );
 
     expect(redirect).toHaveBeenCalledWith('/login');
     expect(client).not.toHaveBeenCalled();
@@ -235,32 +194,13 @@ describe('updateContentSource: access gates run before any repository call', () 
     const { builder, from } = arrange(DRAFT_ROW);
     mockedMembership.mockResolvedValue(null);
 
-    const state = await updateContentSource(
-      WORKSPACE_ID,
-      CONTENT_ID,
-      {},
-      form({ media_status: 'available' }),
-    );
+    const state = await updateContentSource(WORKSPACE_ID, CONTENT_ID, {}, form());
 
     expect(state).toEqual({ error: 'You do not have access to this workspace.' });
     expect(mockedMembership).toHaveBeenCalledWith(expect.anything(), WORKSPACE_ID, USER.id);
     expect(from).not.toHaveBeenCalled();
     expect(builder.calls).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
-  });
-
-  it('not found on the transition read → "Content not found." and no write', async () => {
-    const { builder } = arrange(null);
-
-    const state = await updateContentSource(
-      WORKSPACE_ID,
-      CONTENT_ID,
-      {},
-      form({ media_status: 'available' }),
-    );
-
-    expect(state).toEqual({ error: 'Content not found.' });
-    expect(tableWrites(builder)).toEqual([]);
   });
 
   it('not found on the write (row vanished or wrong workspace) → "Content not found."', async () => {
@@ -273,7 +213,6 @@ describe('updateContentSource: access gates run before any repository call', () 
   });
 
   it.each([
-    ['unknown media_status', { media_status: 'processing' }],
     ['non-http link', { source_url: 'javascript:alert(1)' }],
     ['unknown source_type', { source_type: 'facebook' }],
   ])(

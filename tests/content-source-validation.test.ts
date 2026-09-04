@@ -4,7 +4,6 @@ import {
   CONTENT_EXTERNAL_ID_MAX_LENGTH,
   CONTENT_SOURCE_TYPES,
   CONTENT_SOURCE_URL_MAX_LENGTH,
-  MEDIA_STATUSES,
   validateUpdateContentSource,
 } from '../packages/shared/src/content/content.ts';
 
@@ -12,7 +11,6 @@ const valid = {
   source_type: 'tiktok',
   source_url: 'https://www.tiktok.com/@someone/video/123',
   external_id: '123',
-  media_status: 'external_only',
 };
 
 describe('validateUpdateContentSource', () => {
@@ -40,20 +38,15 @@ describe('validateUpdateContentSource', () => {
     },
   );
 
-  it.each(MEDIA_STATUSES)('accepts media status %s at the schema layer', (media_status) => {
-    // `available` is refused by the Server Action as a transition, not by Zod,
-    // so a row already marked available can still have its link edited.
-    expect(validateUpdateContentSource({ ...valid, media_status }).success).toBe(true);
-  });
-
-  it.each(['AVAILABLE', 'processing', 'temporary', 'deleted', '', undefined])(
-    'rejects unknown media status %p',
-    (media_status) => {
+  it('never accepts media_status as owner input; storage verbs own it', () => {
+    for (const media_status of ['external_only', 'temporary', 'available', 'missing']) {
       const result = validateUpdateContentSource({ ...valid, media_status });
-      expect(result.success).toBe(false);
-      if (!result.success) expect(result.fieldErrors.media_status).toBeDefined();
-    },
-  );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).not.toHaveProperty('media_status');
+      }
+    }
+  });
 
   describe('source_url', () => {
     it('normalises an empty or whitespace link to null', () => {
@@ -130,13 +123,12 @@ describe('validateUpdateContentSource', () => {
       source_type: 'nope',
       source_url: 'javascript:1',
       external_id: 'x'.repeat(CONTENT_EXTERNAL_ID_MAX_LENGTH + 1),
-      media_status: 'nope',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
       // This is the pin that catches a hard-coded field allow-list.
       expect(Object.keys(result.fieldErrors).sort()).toEqual(
-        ['external_id', 'media_status', 'source_type', 'source_url'].sort(),
+        ['external_id', 'source_type', 'source_url'].sort(),
       );
     }
   });
@@ -148,12 +140,13 @@ describe('validateUpdateContentSource', () => {
       workspace_id: 'evil',
       storage_provider: 'r2',
       storage_key: 'somewhere',
+      media_status: 'available',
       title: 'smuggled',
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(Object.keys(result.data).sort()).toEqual(
-        ['external_id', 'media_status', 'source_type', 'source_url'].sort(),
+        ['external_id', 'source_type', 'source_url'].sort(),
       );
     }
   });

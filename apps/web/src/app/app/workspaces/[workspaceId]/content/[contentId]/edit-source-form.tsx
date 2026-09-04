@@ -1,24 +1,11 @@
 'use client';
 
-import {
-  CONTENT_SOURCE_TYPES,
-  OWNER_SETTABLE_MEDIA_STATUSES,
-  type ContentSourceType,
-  type MediaStatus,
-} from '@ai-content/shared/content';
+import { CONTENT_SOURCE_TYPES, type ContentSourceType } from '@ai-content/shared/content';
 import { useActionState } from 'react';
 
 import type { ContentSourceFormState } from '@/app/app/workspaces/[workspaceId]/content-actions';
 import { useCloseOnSuccess } from '@/components/use-close-on-success';
-import {
-  Button,
-  Field,
-  Input,
-  MEDIA_STATUS_LABEL,
-  Notice,
-  SOURCE_TYPE_LABEL,
-  Select,
-} from '@/components/ui';
+import { Button, Field, Input, Notice, SOURCE_TYPE_LABEL, Select } from '@/components/ui';
 
 interface EditSourceFormProps {
   action: (state: ContentSourceFormState, formData: FormData) => Promise<ContentSourceFormState>;
@@ -26,7 +13,6 @@ interface EditSourceFormProps {
     source_type: ContentSourceType;
     source_url: string | null;
     external_id: string | null;
-    media_status: MediaStatus;
   };
 }
 
@@ -42,11 +28,6 @@ export function EditSourceForm({ action, current }: EditSourceFormProps) {
   );
 
   useCloseOnSuccess(isPending, state);
-
-  // 'available' is not owner-settable; if a later phase has set it, keep the
-  // control honest by showing the current value read-only rather than
-  // silently offering a downgrade.
-  const mediaStatusLocked = current.media_status === 'available';
 
   return (
     <form action={formAction} className="flex min-w-0 flex-col gap-4">
@@ -108,40 +89,6 @@ export function EditSourceForm({ action, current }: EditSourceFormProps) {
             enterKeyHint="next"
           />
         )}
-      </Field>
-
-      <Field
-        id="media-status"
-        label="Media"
-        hint={
-          mediaStatusLocked
-            ? 'A stored copy exists. This is set by the system.'
-            : 'External only means the file lives on its platform, not here.'
-        }
-        error={state.fieldErrors?.media_status}
-      >
-        {(a11y) =>
-          mediaStatusLocked ? (
-            <>
-              <Input
-                {...a11y}
-                type="text"
-                value={MEDIA_STATUS_LABEL[current.media_status]}
-                readOnly
-                aria-readonly
-              />
-              <input type="hidden" name="media_status" value={current.media_status} />
-            </>
-          ) : (
-            <Select {...a11y} name="media_status" defaultValue={current.media_status}>
-              {OWNER_SETTABLE_MEDIA_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {MEDIA_STATUS_LABEL[status]}
-                </option>
-              ))}
-            </Select>
-          )
-        }
       </Field>
 
       <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:self-start">

@@ -14,7 +14,13 @@ import {
   generateCaption,
   selectCaption,
 } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-actions';
+import {
+  confirmContentMedia,
+  removeContentMediaUpload,
+  requestContentMediaUpload,
+} from '@/app/app/workspaces/[workspaceId]/content/[contentId]/media-actions';
 import { CaptionVersion } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/caption-version';
+import { MediaUploadForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/media-upload-form';
 import { DeleteContentButton } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/delete-content-button';
 import { EditContentForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-content-form';
 import { EditSourceForm } from '@/app/app/workspaces/[workspaceId]/content/[contentId]/edit-source-form';
@@ -30,6 +36,10 @@ import {
 import { getContentInWorkspace } from '@/server/repositories/content-repository';
 import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
 import { getWorkspaceForUser } from '@/server/repositories/workspace-repository';
+import {
+  ContentMediaStorageError,
+  createContentMediaReadUrl,
+} from '@/server/storage/content-media';
 
 import { createServerClient, getAuthenticatedUser } from '@/lib/supabase/server';
 
@@ -118,12 +128,30 @@ export default async function ContentPage({ params }: ContentPageProps) {
   const captions = captionRows;
   const profile = profileRow;
 
+  let mediaUrl: string | null = null;
+
+  if (content.media_status === 'available' && content.storage_key) {
+    try {
+      // Short-lived member preview. Future publish attempts mint their own URL
+      // with a TTL sized to Meta's fetch window; neither URL is stored.
+      mediaUrl = await createContentMediaReadUrl(supabase, content.storage_key);
+    } catch (error) {
+      if (!(error instanceof ContentMediaStorageError)) throw error;
+      // The content page is still useful when Storage is temporarily down.
+      // Do not log the signed URL/key; the service error cause is enough.
+      console.error('[media] preview URL unavailable', error.cause);
+    }
+  }
+
   // Same rule the prompt uses, so the hint and the model agree on "empty".
   const profileIsEmpty = describeProfile(profile) === null;
 
   const boundUpdateContent = updateContent.bind(null, workspace.id, content.id);
   const boundGenerateCaption = generateCaption.bind(null, workspace.id, content.id);
   const boundUpdateContentSource = updateContentSource.bind(null, workspace.id, content.id);
+  const boundRequestMediaUpload = requestContentMediaUpload.bind(null, workspace.id, content.id);
+  const boundConfirmMediaUpload = confirmContentMedia.bind(null, workspace.id, content.id);
+  const boundRemoveMediaUpload = removeContentMediaUpload.bind(null, workspace.id, content.id);
   const boundDeleteContent = deleteContent.bind(null, workspace.id, content.id);
 
   // Everything the owner can see about provenance in one glance. A row with
@@ -199,6 +227,33 @@ export default async function ContentPage({ params }: ContentPageProps) {
             ) : null}
           </section>
 
+          <section aria-labelledby="media-heading" className="flex flex-col gap-3">
+            <div>
+              <h2 id="media-heading" className="font-medium">
+                Media
+              </h2>
+              <p className="mt-1 text-[14px] text-ink-soft">
+                Stored privately and used by later processing and publishing stages.
+              </p>
+            </div>
+            {mediaUrl ? (
+              <video
+                src={mediaUrl}
+                controls
+                preload="metadata"
+                className="aspect-video w-full rounded-control bg-black object-contain"
+              >
+                Your browser does not support video playback.
+              </video>
+            ) : null}
+            <MediaUploadForm
+              mediaStatus={content.media_status}
+              requestUpload={boundRequestMediaUpload}
+              confirmUpload={boundConfirmMediaUpload}
+              removeUpload={boundRemoveMediaUpload}
+            />
+          </section>
+
           <div className="flex flex-col gap-3 border-t border-line pt-5">
             <Sheet trigger="Edit details" title="Details">
               <EditContentForm
@@ -216,7 +271,6 @@ export default async function ContentPage({ params }: ContentPageProps) {
                   source_type: content.source_type,
                   source_url: content.source_url,
                   external_id: content.external_id,
-                  media_status: content.media_status,
                 }}
               />
             </Sheet>
