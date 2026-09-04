@@ -106,10 +106,10 @@ export function MediaUploadForm({
     setIsUploading(true);
     setError(undefined);
 
-    const supabase = createSupabaseBrowserClient();
     const result = await performContentMediaUpload(file, {
       requestTicket: requestUpload,
-      upload: (ticket, selected) => uploadContentMediaFile(supabase, ticket, selected),
+      upload: (ticket, selected) =>
+        uploadContentMediaFile(createSupabaseBrowserClient(), ticket, selected),
       confirm: confirmUpload,
     });
 

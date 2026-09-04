@@ -183,9 +183,9 @@ comment on function public.reserve_content_media(uuid, uuid, text) is
 -- Object access
 -- ---------------------------------------------------------------------------
 
--- The real Supabase catalogue already enables this, but make the migration's
--- policies non-inert by construction and keep the local proof honest.
-alter table storage.objects enable row level security;
+-- Supabase Storage owns this table and already enables RLS. Project migration
+-- roles deliberately do not ALTER this managed catalogue; the local shim owns
+-- its test-table RLS setup instead.
 
 -- INSERT is the only write clients get. It is not just a workspace-prefix
 -- check: the exact object name must already be reserved on a content row in

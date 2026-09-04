@@ -35,8 +35,17 @@ export class BrowserEnvValidationError extends Error {
   }
 }
 
-export function loadBrowserRuntimeEnv(source: BrowserEnvSource = process.env): BrowserRuntimeEnv {
-  const result = browserRuntimeEnvSchema.safeParse(source);
+function browserProcessEnv(): BrowserEnvSource {
+  // Next.js replaces direct NEXT_PUBLIC property reads in browser bundles. It
+  // cannot inline `process.env` when the whole object is passed to a helper.
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
+}
+
+export function loadBrowserRuntimeEnv(source?: BrowserEnvSource): BrowserRuntimeEnv {
+  const result = browserRuntimeEnvSchema.safeParse(source ?? browserProcessEnv());
 
   if (!result.success) {
     throw new BrowserEnvValidationError(result.error.issues);
@@ -45,6 +54,6 @@ export function loadBrowserRuntimeEnv(source: BrowserEnvSource = process.env): B
   return result.data;
 }
 
-export function isBrowserRuntimeEnvConfigured(source: BrowserEnvSource = process.env): boolean {
-  return browserRuntimeEnvSchema.safeParse(source).success;
+export function isBrowserRuntimeEnvConfigured(source?: BrowserEnvSource): boolean {
+  return browserRuntimeEnvSchema.safeParse(source ?? browserProcessEnv()).success;
 }

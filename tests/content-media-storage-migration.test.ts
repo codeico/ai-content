@@ -36,6 +36,11 @@ describe('content media storage migration', () => {
     expect(code).not.toMatch(/image\/(jpeg|png|webp)/);
   });
 
+  it('does not alter the managed storage.objects table owned by Supabase Storage', () => {
+    expect(code).not.toMatch(/alter table storage\.objects/);
+    expect(sql).toContain('supabase storage owns this table and already enables rls');
+  });
+
   it('allows authenticated INSERT only to the exact key reserved on a real content row', () => {
     const policy = policyBody('Members can upload content media');
     expect(policy).toContain('on storage.objects');

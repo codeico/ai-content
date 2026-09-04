@@ -27,7 +27,9 @@ describe('content media upload UI', () => {
   it('does not submit the File through a Server Action or Next.js', () => {
     const code = source();
     expect(code).toContain('performContentMediaUpload(file');
-    expect(code).toContain('uploadContentMediaFile(supabase, ticket, selected)');
+    expect(code).toContain(
+      'uploadContentMediaFile(createSupabaseBrowserClient(), ticket, selected)',
+    );
     expect(code).not.toMatch(/formData\.set\([^,]+,\s*file/);
   });
 

@@ -98,8 +98,26 @@ describe('profiles stay pinned to their owner', () => {
 });
 
 describe('row level security is enabled wherever a policy exists', () => {
-  it.each([...new Set(policies().map((p) => p.file))])('%s enables RLS', (file) => {
-    // Policies on a table without RLS enabled are silently inert.
-    expect(sqlOf(file)).toMatch(/enable row level security/);
-  });
+  const policyTables = policies()
+    .map((policy) => {
+      const table = /on\s+([a-z_]+\.[a-z_]+)\b/.exec(policy.body)?.[1];
+      return table ? { file: policy.file, table } : null;
+    })
+    .filter((entry): entry is { file: string; table: string } => entry !== null);
+
+  it.each(policyTables)(
+    '$table in $file has an explicit or managed RLS owner',
+    ({ file, table }) => {
+      if (table.startsWith('storage.')) {
+        // Supabase owns storage.objects and enables RLS itself; project migration
+        // roles cannot ALTER the managed table. Local parity is set in the shim.
+        expect(table).toBe('storage.objects');
+        expect(sqlOf(file)).toContain('supabase storage owns this table and already enables rls');
+        return;
+      }
+
+      // Policies on an ordinary project table without RLS enabled are inert.
+      expect(sqlOf(file)).toContain(`alter table ${table} enable row level security`);
+    },
+  );
 });
