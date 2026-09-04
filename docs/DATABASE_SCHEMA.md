@@ -634,13 +634,24 @@ DUPLICATE
 > each arrives as a `check` widening in a new migration alongside the phase
 > that can reach it, never as a rewrite of an applied one.
 >
-> **Unsettled, and it should be settled before the scheduling phase:** whether
-> `SCHEDULED` and `PUBLISHED` belong in this column at all, or in
-> `scheduled_posts` / `published_posts` rows referencing the content. A content
-> item can be republished after a failure, and may publish to more than one
-> account over time; neither fits a single column on the content row. Deciding
-> this after real content exists means a data migration rather than an edit.
-> See `docs/PRODUCT_ALIGNMENT.md` §4.
+> **Settled 2026-09-03 — publishing is not a content state.** `SCHEDULED`,
+> `PUBLISHING`, `PUBLISHED` and `PUBLISH_FAILED` above do **not** belong to
+> `content`. They belong to `scheduled_posts` (intent), `publish_attempts`
+> (each try) and `published_posts` (the durable result), all of which §19–21
+> already define. The forcing case: one content item may be published more than
+> once, to several accounts, with retries — and "has this been published?"
+> becomes unanswerable if the answer lives in a single column on the content
+> row. A content item stays `ready` while it is scheduled, published, retried
+> and published again elsewhere; `ready` remains the honest description of the
+> asset.
+>
+> `VALIDATING`, `ANALYZING` and `SCORING` are job states, owned by `jobs.status`
+> (§24), not content states. `FAILED` is ambiguous as a content state and is
+> resolved by asking what failed — the job, or the publish attempt.
+>
+> Five of the fifteen states listed above were never content states. The full
+> classification, with owning entity and allowed transitions for all four
+> lifecycles, is in `docs/STATE_MACHINES.md`.
 
 ---
 

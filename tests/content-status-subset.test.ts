@@ -48,15 +48,32 @@ describe('the content status subset stays explained', () => {
     expect(note()).toMatch(/publisher/);
   });
 
-  it('keeps the scheduled/published placement flagged as unsettled', () => {
-    // The expensive-to-reverse decision. It must not quietly look decided.
-    expect(note()).toMatch(/Unsettled/);
-    expect(note()).toMatch(/scheduled_posts/);
-    expect(note()).toMatch(/republished/);
+  it('records that publishing is not a content state', () => {
+    // Settled 2026-09-03. The decision must not decay back into ambiguity,
+    // and it must keep naming where publishing state actually lives.
+    expect(note()).toMatch(/Settled/);
+
+    for (const owner of ['scheduled_posts', 'publish_attempts', 'published_posts']) {
+      expect(note()).toContain(owner);
+    }
   });
 
-  it('points at the alignment document that carries the reasoning', () => {
-    expect(note()).toMatch(/PRODUCT_ALIGNMENT/);
+  it('keeps the forcing case, not just the conclusion', () => {
+    // A conclusion without its reason gets re-litigated. The reason is that
+    // one item can be published more than once. Prettier wraps the doc, so
+    // match across a line break and its blockquote marker.
+    //
+    // Assert the phrase that MARKS it as the reason, not just the fact:
+    // an earlier version passed while the "forcing case" framing was deleted,
+    // leaving the sentence present but no longer identified as the argument.
+    const flat = note().replace(/\n>\s*/g, ' ');
+    expect(flat).toMatch(/forcing case/i);
+    expect(flat).toMatch(/published more than once/);
+  });
+
+  it('points at the documents that carry the reasoning', () => {
+    expect(note()).toMatch(/STATE_MACHINES/);
+    expect(existsSync(join(ROOT, 'docs/STATE_MACHINES.md'))).toBe(true);
     expect(existsSync(join(ROOT, 'docs/PRODUCT_ALIGNMENT.md'))).toBe(true);
   });
 
