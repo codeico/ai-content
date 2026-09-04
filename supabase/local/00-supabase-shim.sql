@@ -23,6 +23,17 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then
     create role service_role nologin bypassrls;
   end if;
+  -- PostgREST connects as authenticator and switches into the role named by
+  -- the verified JWT. It must be a MEMBER of each role it may switch into;
+  -- Supabase grants anon/authenticated/service_role. NOINHERIT is what makes
+  -- the switch explicit: authenticator has no privileges of its own until it
+  -- SET ROLEs, exactly as on Supabase.
+  if not exists (select 1 from pg_roles where rolname = 'authenticator') then
+    create role authenticator noinherit login password 'authenticator';
+    grant anon to authenticator;
+    grant authenticated to authenticator;
+    grant service_role to authenticator;
+  end if;
 end
 $$;
 

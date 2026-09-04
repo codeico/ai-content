@@ -88,6 +88,21 @@ export const futureProviderEnvSchema = z.object({
    * rejected before it reaches production.
    */
   JOB_WORKER_TRIGGER_SECRET: requiredString.min(32).optional(),
+
+  /**
+   * The project's JWT signing secret. The job worker uses it to mint a
+   * short-lived token with `role: job_worker`, which PostgREST honours because
+   * `authenticator` is a member of that role (see docs/WORKER_TRANSPORT.md).
+   *
+   * Same trust tier as SUPABASE_SERVICE_ROLE_KEY — whoever holds it can mint
+   * any role — and it lives alongside it, never in a browser bundle. Optional
+   * here for the same reason as the AI router: unconfigured means the worker
+   * returns 503, not that the application fails to boot.
+   *
+   * Minimum 32 bytes is Supabase's own floor for the secret; a shorter one
+   * would let HS256 be brute-forced.
+   */
+  SUPABASE_JWT_SECRET: requiredString.min(32).optional(),
 });
 
 export type FutureProviderEnv = z.infer<typeof futureProviderEnvSchema>;

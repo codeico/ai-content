@@ -520,6 +520,29 @@ grant execute on function public.claim_job(text) to job_worker;
 grant execute on function public.complete_job(uuid, text, jsonb) to job_worker;
 grant execute on function public.fail_job(uuid, text, text, boolean) to job_worker;
 
+-- How the worker ARRIVES as job_worker. PostgREST connects as `authenticator`
+-- and SET ROLEs into the role named by the verified JWT. It can only switch
+-- into roles it is a member of, so the worker's self-minted JWT
+-- ({role: "job_worker"}) is useless without this grant.
+--
+-- Does this widen anything for anon/authenticated? Tested, not assumed:
+-- SET ROLE checks membership against the SESSION user, so SQL already
+-- running as anon could in principle SET ROLE to anything authenticator is a
+-- member of — and that list already contains service_role (bypassrls). The
+-- grant adds a three-verb role to a list that already holds the master key.
+-- Evidence: supabase/local/probe-authenticator.sql, probe-baseline.sql.
+-- What the model actually relies on is that no function body ever executes
+-- dynamic SQL or SET ROLE; tests/migration-no-dynamic-sql.test.ts enforces it.
+--
+-- Guarded because local shims and test databases may not have authenticator.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticator') then
+    grant job_worker to authenticator;
+  end if;
+end
+$$;
+
 -- job_lease_for is called inside claim_job (security definer), so the worker
 -- role does not need it directly. Tenants do not need it at all.
 revoke execute on function public.job_lease_for(text) from public, anon, authenticated, service_role;

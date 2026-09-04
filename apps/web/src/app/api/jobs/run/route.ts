@@ -76,6 +76,18 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ...report, durationMs: Date.now() - startedAt });
   } catch (cause) {
     if (cause instanceof WorkerError) {
+      const pg = cause.cause as { code?: string } | undefined;
+
+      // PGRST301: PostgREST could not verify our minted token. That is a
+      // configuration fault — SUPABASE_JWT_SECRET does not match the project —
+      // not a transient database error, and it must not look like one. 503
+      // with a distinct code so the operator fixes the secret instead of
+      // retrying. Same "closed when misconfigured" posture as the auth layer.
+      if (pg?.code === 'PGRST301') {
+        console.error('[jobs] worker token rejected by PostgREST; SUPABASE_JWT_SECRET mismatch?');
+        return Response.json({ error: 'worker_token_rejected' }, { status: 503 });
+      }
+
       // The verb itself failed — a database error, not a handler error.
       // Handler errors never reach here; the loop maps them to fail_job.
       console.error('[jobs] worker verb failed', cause.cause);
