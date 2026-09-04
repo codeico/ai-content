@@ -58,8 +58,8 @@ echo "== 3. fencing: a worker that lost its lease writes zero rows =="
 Q -c "delete from public.jobs;"
 Q -c "set role authenticated; set request.jwt.claim.sub='$USR'; select public.enqueue_job('$WS','proof','{}'::jsonb)" >/dev/null
 JID=$(Q -c "set role job_worker; select (public.claim_job('zombie')).id")
-# Simulate lease expiry: age the lock past job_lease_for('proof') = 1 minute.
-Q -c "update public.jobs set locked_at = now() - interval '2 minutes' where id='$JID'"
+# Simulate lease expiry: age the lock past job_lease_for('proof') = 2 minutes.
+Q -c "update public.jobs set locked_at = now() - interval '3 minutes' where id='$JID'"
 RECLAIM=$(Q -c "set role job_worker; select (public.claim_job('fresh')).id")
 check "stale job reclaimed by fresh worker" "$RECLAIM" "$JID"
 check "locked_by rewritten" "$(Q -c "select locked_by from public.jobs where id='$JID'")" "fresh"
@@ -122,7 +122,7 @@ check "cancel pending" "$(Q -c "set role authenticated; set request.jwt.claim.su
 check "pending -> failed" "$(Q -c "select status||'/'||last_error_code from public.jobs where id='$R'")" "failed/cancelled"
 check "cancel running" "$(Q -c "set role authenticated; set request.jwt.claim.sub='$USR'; select public.cancel_job('$P')")" "t"
 check "running stays running, flagged" "$(Q -c "select status||'/'||cancel_requested from public.jobs where id='$P'")" "running/true"
-Q -c "update public.jobs set locked_at = now() - interval '2 minutes' where id='$P'"
+Q -c "update public.jobs set locked_at = now() - interval '3 minutes' where id='$P'"
 check "cancel-requested stale job NOT reclaimed" "$(Q -c "set role job_worker; select coalesce((public.claim_job('x')).id::text,'none')")" "none"
 
 # ---------------------------------------------------------------------------

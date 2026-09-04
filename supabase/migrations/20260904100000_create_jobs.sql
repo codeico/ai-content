@@ -134,7 +134,7 @@ language sql
 immutable
 as $$
   select case job_type
-    when 'proof' then interval '1 minute'
+    when 'proof' then interval '2 minutes'
     else interval '5 minutes'
   end;
 $$;

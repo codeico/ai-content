@@ -73,6 +73,21 @@ export const futureProviderEnvSchema = z.object({
     .optional(),
   AI_ROUTER_API_KEY: requiredString.optional(),
   AI_ROUTER_MODEL: requiredString.optional(),
+
+  /**
+   * Shared secret that authenticates the job worker trigger (POST /api/jobs/run).
+   *
+   * The trigger is the first surface in this codebase not governed by RLS: it
+   * runs cross-tenant by design, so a caller who can reach it can make the
+   * worker do work. It is therefore behind a bearer secret that only the
+   * scheduler (Vercel Cron, or an external one) holds. Not a Supabase key: a
+   * leaked service-role key would be catastrophic, a leaked trigger secret can
+   * at worst make the worker run early, and rotating it touches nothing else.
+   *
+   * At least 32 characters so a short value that "works" in development is
+   * rejected before it reaches production.
+   */
+  JOB_WORKER_TRIGGER_SECRET: requiredString.min(32).optional(),
 });
 
 export type FutureProviderEnv = z.infer<typeof futureProviderEnvSchema>;
