@@ -3,10 +3,9 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useRef,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 
@@ -24,6 +23,11 @@ import {
  * free. Reimplementing those by hand is where accessible modals usually go
  * wrong.
  */
+/** The hydration flag never changes after mount, so there is nothing to subscribe to. */
+function subscribeNoop(): () => void {
+  return () => {};
+}
+
 interface SheetProps {
   /** Button label that opens the sheet. */
   trigger: string;
@@ -58,12 +62,18 @@ export function useSheet() {
 
 export function Sheet({ trigger, title, children }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [enhanced, setEnhanced] = useState(false);
 
-  // Only take over once mounted: until then the server-rendered markup is the
-  // no-JS version, and swapping it earlier would hide content from a client
-  // that never runs this code.
-  useEffect(() => setEnhanced(true), []);
+  // Only take over once hydrated: until then the server-rendered markup is
+  // the no-JS version, and swapping it earlier would hide content from a
+  // client that never runs this code. useSyncExternalStore with a constant
+  // server snapshot is React's own idiom for "am I on the client yet" — it
+  // yields false during SSR and the hydration pass, true afterwards, with no
+  // effect-driven setState and therefore no cascading render.
+  const enhanced = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
 
   function open() {
     ref.current?.showModal();

@@ -42,6 +42,24 @@ export default tseslint.config(
     },
   },
 
+  // The service worker runs in a ServiceWorkerGlobalScope, not a window and
+  // not Node. Declare exactly the globals it uses so no-undef stays meaningful
+  // for everything else: an unlisted name here is still an error.
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        Response: 'readonly',
+        Request: 'readonly',
+        URL: 'readonly',
+        console: 'readonly',
+      },
+    },
+  },
+
   // Must stay last so formatting rules never fight Prettier.
   prettier,
 );

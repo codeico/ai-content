@@ -63,8 +63,15 @@ describe('the form works without JavaScript', () => {
     expect(SHEET).not.toMatch(/action=\{/);
   });
 
-  it('waits for mount before enhancing', () => {
-    expect(SHEET).toMatch(/useEffect\(\(\) => setEnhanced\(true\), \[\]\)/);
+  it('waits for hydration before enhancing', () => {
+    // The server snapshot must be `false` so SSR and the hydration pass render
+    // the no-JS markup; the client snapshot flips to `true` afterwards. This
+    // is React's own idiom for the question — an effect calling setState was
+    // the previous answer and is what the compiler lint now forbids.
+    expect(SHEET).toMatch(/useSyncExternalStore\(/);
+    expect(SHEET).toMatch(/\(\) => true,\s*\(\) => false,/);
+    // The old pattern must not come back under either name.
+    expect(SHEET).not.toMatch(/useEffect\(\(\) => set\w+\(true\)/);
   });
 });
 
@@ -79,9 +86,17 @@ describe('dismissal follows the action result, not the click', () => {
     expect(HOOK).toMatch(/close\(\)/);
   });
 
-  it('the shared hook waits for the action to settle', () => {
-    // Closing while isPending would tear the form down mid-submit.
-    expect(HOOK).toMatch(/if \(!submitted\.current \|\| isPending\) return;/);
+  it('the shared hook closes only on the pending→settled edge', () => {
+    // Closing while isPending would tear the form down mid-submit, and
+    // closing on mount would dismiss a sheet that merely opened with an old
+    // success state. Both are ruled out by acting on the falling edge only.
+    expect(HOOK).toMatch(/wasPending\.current && !isPending/);
+    expect(HOOK).toMatch(/if \(!settledNow\) return;/);
+    // Errors still veto the close.
+    expect(HOOK).toMatch(/if \(state\.error \|\| state\.fieldErrors\) return;/);
+    // And the ref is only ever touched inside the effect, never in render.
+    const renderBody = HOOK.slice(HOOK.indexOf('const wasPending'), HOOK.indexOf('useEffect('));
+    expect(renderBody).not.toMatch(/\.current\s*=/);
   });
 
   it.each(SHEET_FORMS)('%s uses the shared rule rather than its own', (path) => {
