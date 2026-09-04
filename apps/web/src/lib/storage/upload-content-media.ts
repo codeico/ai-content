@@ -19,12 +19,10 @@ export async function uploadContentMediaFile(
   ticket: ContentMediaUploadTicket,
   file: Blob,
 ): Promise<void> {
-  const { error } = await supabase.storage
-    .from(ticket.bucket)
-    .uploadToSignedUrl(ticket.path, ticket.token, file, {
-      contentType: file.type,
-      upsert: false,
-    });
+  const { error } = await supabase.storage.from(ticket.bucket).upload(ticket.path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
 
   if (error) {
     throw new ContentMediaUploadError(error);
@@ -69,6 +67,16 @@ export async function performContentMediaUpload(
   try {
     await operations.upload(ticket, file);
   } catch {
+    // A network error may mean Storage committed the object but its response was
+    // lost. Confirming the exact reserved path is safe and idempotent; if the
+    // object is absent the server returns an error and the normal retry remains.
+    try {
+      const recovered = await operations.confirm(ticket.path);
+      if ('ok' in recovered) return recovered;
+    } catch {
+      // Preserve the upload failure below; confirmation is best-effort recovery.
+    }
+
     return { error: 'Upload failed. Check your connection and try again.' };
   }
 

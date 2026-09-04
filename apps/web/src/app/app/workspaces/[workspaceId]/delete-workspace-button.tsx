@@ -1,12 +1,14 @@
 'use client';
 
 import { ConfirmDelete } from '@/components/confirm-delete';
+import { Button } from '@/components/ui';
 
 interface DeleteWorkspaceButtonProps {
   action: () => Promise<void>;
   workspaceName: string;
   /** Everything below cascades from the workspace row; say so before, not after. */
   contentCount: number;
+  storedMediaCount: number;
   hasProfile: boolean;
 }
 
@@ -14,8 +16,24 @@ export function DeleteWorkspaceButton({
   action,
   workspaceName,
   contentCount,
+  storedMediaCount,
   hasProfile,
 }: DeleteWorkspaceButtonProps) {
+  if (storedMediaCount > 0) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Button type="button" variant="danger" className="w-full" disabled>
+          Delete workspace
+        </Button>
+        <p className="text-[13px] text-ink-faint">
+          Remove stored media from {storedMediaCount}{' '}
+          {storedMediaCount === 1 ? 'content item' : 'content items'} before deleting this
+          workspace.
+        </p>
+      </div>
+    );
+  }
+
   // "All of its content goes with it" was true but incomplete: captions and the
   // AI profile cascade too. An owner deciding whether to delete should see the
   // real extent, not a euphemism.

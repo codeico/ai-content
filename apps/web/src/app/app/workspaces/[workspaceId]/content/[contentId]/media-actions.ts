@@ -26,7 +26,8 @@ export type ConfirmMediaUploadResult = { ok: true } | { error: string };
  * Authorise a direct browser → Storage upload.
  *
  * Only metadata crosses this Server Action. The actual File stays in the
- * browser; after this returns, uploadToSignedUrl sends it directly to Storage.
+ * browser; after this returns, the user's Supabase session uploads it directly
+ * to the exact reserved path under Storage RLS.
  */
 export async function requestContentMediaUpload(
   workspaceId: string,

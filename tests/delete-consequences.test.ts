@@ -51,8 +51,10 @@ describe('confirmations name what is destroyed', () => {
     const text = source(CONTENT_BUTTON);
     expect(text).toMatch(/captionCount/);
     expect(text).toMatch(/caption\$\{captionCount === 1 \? '' : 's'\}/);
+    expect(text).toContain('hasStoredMedia');
+    expect(text).toContain('its stored video');
     // Still honest when there is nothing extra to lose.
-    expect(text).toContain('captionCount === 0');
+    expect(text).toContain('parts.length === 0');
   });
 
   it('workspace delete warns about content, captions and the profile', () => {
@@ -60,6 +62,8 @@ describe('confirmations name what is destroyed', () => {
     expect(text).toMatch(/contentCount/);
     expect(text).toMatch(/every caption written for/);
     expect(text).toMatch(/the AI profile/);
+    expect(text).toContain('storedMediaCount');
+    expect(text).toContain('Remove stored media');
   });
 
   it('agrees in number for a single content item', () => {
@@ -83,6 +87,8 @@ describe('confirmations name what is destroyed', () => {
     const workspacePage = source('apps/web/src/app/app/workspaces/[workspaceId]/page.tsx');
     // counts.total is the database count, not the paginated page length.
     expect(workspacePage).toContain('contentCount={counts.total}');
+    expect(workspacePage).toContain('storedMediaCount={storedMediaCount}');
+    expect(workspacePage).toContain('countStoredMediaForWorkspace');
     expect(workspacePage).toContain('hasProfile={profile !== null}');
   });
 });

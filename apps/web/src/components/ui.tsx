@@ -148,7 +148,7 @@ export const SOURCE_TYPE_LABEL: Record<ContentSourceType, string> = {
 
 export const MEDIA_STATUS_LABEL: Record<MediaStatus, string> = {
   external_only: 'External only',
-  temporary: 'Uploading',
+  temporary: 'Upload incomplete',
   available: 'Available',
   missing: 'Missing',
 };

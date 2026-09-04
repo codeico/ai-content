@@ -392,6 +392,7 @@ export type Database = {
         Args: {
           target_workspace_id: string;
           target_content_id: string;
+          expected_storage_key: string;
         };
         Returns: boolean;
       };

@@ -73,8 +73,10 @@ moves the row:
 - `confirm_content_media(ws, content, key)` — `temporary → available`, only
   if `storage.objects` already holds that exact key in the private
   `content-media` bucket. Idempotent once confirmed.
-- `release_content_media(ws, content)` — `temporary|available → external_only`,
-  only after the object is gone from the catalogue. Idempotent.
+- `release_content_media(ws, content, expected_key)` —
+  `temporary|available → external_only`, only after that exact object is gone
+  from the catalogue. Idempotent and generation-fenced: a stale cleanup cannot
+  clear a newer reservation.
 
 `missing` stays in the CHECK for forward compatibility but no verb produces it
 yet; a later acquisition phase that detects a vanished object will own that

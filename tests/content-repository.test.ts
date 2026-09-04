@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ContentRepositoryError,
+  countStoredMediaForWorkspace,
   createContentInWorkspace,
   deleteContentInWorkspace,
   getContentInWorkspace,
@@ -48,6 +49,22 @@ describe('listContentForWorkspace', () => {
     await expect(listContentForWorkspace(client, WORKSPACE_ID)).rejects.toBeInstanceOf(
       ContentRepositoryError,
     );
+  });
+});
+
+describe('countStoredMediaForWorkspace', () => {
+  it('counts only non-null storage keys inside the bound workspace', async () => {
+    const builder = new MockQueryBuilder({ data: null, error: null, count: 2 });
+    const { client, from } = createMockClient({ content: builder });
+
+    await expect(countStoredMediaForWorkspace(client, WORKSPACE_ID)).resolves.toBe(2);
+    expect(from).toHaveBeenCalledWith('content');
+    expect(builder.calls).toContainEqual({
+      method: 'select',
+      args: ['id', { count: 'exact', head: true }],
+    });
+    expect(builder.calls).toContainEqual(WORKSPACE_SCOPE);
+    expect(builder.calls).toContainEqual({ method: 'not', args: ['storage_key', 'is', null] });
   });
 });
 

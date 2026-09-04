@@ -8,34 +8,34 @@ import type { Database } from '../packages/database/src/types/database.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const PATH = 'workspace/content/object.mp4';
-const TICKET = { bucket: 'content-media' as const, path: PATH, token: 'signed-token' };
+const TICKET = { bucket: 'content-media' as const, path: PATH };
 
 describe('uploadContentMediaFile', () => {
-  it('uploads bytes directly to the exact signed bucket/path without upsert', async () => {
-    const uploadToSignedUrl = vi.fn().mockResolvedValue({
+  it('uploads bytes with the member session to the exact reserved path without upsert', async () => {
+    const upload = vi.fn().mockResolvedValue({
       data: { path: PATH, fullPath: `content-media/${PATH}` },
       error: null,
     });
-    const from = vi.fn().mockReturnValue({ uploadToSignedUrl });
+    const from = vi.fn().mockReturnValue({ upload });
     const client = { storage: { from } } as unknown as SupabaseClient<Database>;
     const file = new Blob(['video-bytes'], { type: 'video/mp4' });
 
     await expect(uploadContentMediaFile(client, TICKET, file)).resolves.toBeUndefined();
 
     expect(from).toHaveBeenCalledWith('content-media');
-    expect(uploadToSignedUrl).toHaveBeenCalledWith(PATH, 'signed-token', file, {
+    expect(upload).toHaveBeenCalledWith(PATH, file, {
       contentType: 'video/mp4',
       upsert: false,
     });
   });
 
-  it('rejects when Storage refuses the upload', async () => {
-    const uploadToSignedUrl = vi.fn().mockResolvedValue({
+  it('rejects when Storage refuses the authenticated upload', async () => {
+    const upload = vi.fn().mockResolvedValue({
       data: null,
       error: { message: 'Asset Already Exists' },
     });
     const client = {
-      storage: { from: vi.fn().mockReturnValue({ uploadToSignedUrl }) },
+      storage: { from: vi.fn().mockReturnValue({ upload }) },
     } as unknown as SupabaseClient<Database>;
 
     await expect(
@@ -90,8 +90,20 @@ describe('performContentMediaUpload', () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it('does not confirm when the byte upload fails', async () => {
-    const confirm = vi.fn();
+  it('recovers when upload response is lost but the exact object was committed', async () => {
+    const confirm = vi.fn().mockResolvedValue({ ok: true as const });
+    await expect(
+      performContentMediaUpload(file, {
+        requestTicket: vi.fn().mockResolvedValue(TICKET),
+        upload: vi.fn().mockRejectedValue(new Error('network response lost')),
+        confirm,
+      }),
+    ).resolves.toEqual({ ok: true });
+    expect(confirm).toHaveBeenCalledWith(PATH);
+  });
+
+  it('reports upload failure when recovery confirms the object is absent', async () => {
+    const confirm = vi.fn().mockResolvedValue({ error: 'not found' });
     await expect(
       performContentMediaUpload(file, {
         requestTicket: vi.fn().mockResolvedValue(TICKET),
@@ -99,7 +111,7 @@ describe('performContentMediaUpload', () => {
         confirm,
       }),
     ).resolves.toEqual({ error: 'Upload failed. Check your connection and try again.' });
-    expect(confirm).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledWith(PATH);
   });
 
   it('turns a rejected ticket request into a retryable message', async () => {

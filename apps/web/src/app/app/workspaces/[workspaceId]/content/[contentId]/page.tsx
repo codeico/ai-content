@@ -129,6 +129,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
   const profile = profileRow;
 
   let mediaUrl: string | null = null;
+  let mediaPreviewUnavailable = false;
 
   if (content.media_status === 'available' && content.storage_key) {
     try {
@@ -137,9 +138,10 @@ export default async function ContentPage({ params }: ContentPageProps) {
       mediaUrl = await createContentMediaReadUrl(supabase, content.storage_key);
     } catch (error) {
       if (!(error instanceof ContentMediaStorageError)) throw error;
+      mediaPreviewUnavailable = true;
       // The content page is still useful when Storage is temporarily down.
-      // Do not log the signed URL/key; the service error cause is enough.
-      console.error('[media] preview URL unavailable', error.cause);
+      // Do not log the signed URL/key; report only stable context.
+      console.error('[media] preview URL unavailable', { contentId: content.id });
     }
   }
 
@@ -248,6 +250,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
             ) : null}
             <MediaUploadForm
               mediaStatus={content.media_status}
+              previewUnavailable={mediaPreviewUnavailable}
               requestUpload={boundRequestMediaUpload}
               confirmUpload={boundConfirmMediaUpload}
               removeUpload={boundRemoveMediaUpload}
@@ -368,6 +371,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
               action={boundDeleteContent}
               title={content.title}
               captionCount={captions.length}
+              hasStoredMedia={content.storage_key !== null}
             />
           </div>
         </aside>

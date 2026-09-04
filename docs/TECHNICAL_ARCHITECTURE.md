@@ -1507,15 +1507,15 @@ Browser
 
 ↓
 
-Request Upload Authorization
+Reserve Server-Generated Object Key
 
 ↓
 
-Generate Signed Upload URL
+Direct Authenticated Upload (RLS)
 
 ↓
 
-Direct Upload
+Confirm Exact Object
 
 ↓
 

@@ -22,6 +22,7 @@ import { AppBar } from '@/components/app-bar';
 import { Sheet } from '@/components/sheet';
 import {
   countContentByStatus,
+  countStoredMediaForWorkspace,
   listContentForWorkspace,
 } from '@/server/repositories/content-repository';
 import { getProfileForWorkspace } from '@/server/repositories/workspace-profile-repository';
@@ -80,11 +81,12 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
   // Counts come from the database, not from tallying the page: once the list
   // is paginated, counting rows in hand would report "3 drafts" for a
   // workspace holding 300.
-  const [workspace, page, profile, counts] = await Promise.all([
+  const [workspace, page, profile, counts, storedMediaCount] = await Promise.all([
     getWorkspaceForUser(supabase, idResult.data, user.id),
     listContentForWorkspace(supabase, idResult.data, { cursor }),
     getProfileForWorkspace(supabase, idResult.data),
     countContentByStatus(supabase, idResult.data),
+    countStoredMediaForWorkspace(supabase, idResult.data),
   ]);
 
   // null for both "missing" and "not a member": a 404 never confirms existence.
@@ -226,6 +228,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
                 action={boundDeleteWorkspace}
                 workspaceName={workspace.name}
                 contentCount={counts.total}
+                storedMediaCount={storedMediaCount}
                 hasProfile={profile !== null}
               />
             </section>

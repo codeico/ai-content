@@ -139,7 +139,7 @@ check "forgery left state available" \
 fails_as_user "content delete before object cleanup" "$OWNER" \
   "delete from public.content where id='$CONTENT' and workspace_id='$WS'"
 check "release while object exists" \
-  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT')")" "f"
+  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT','$KEY')")" "f"
 
 # This DELETE simulates Storage API remove(): the real service removes bytes
 # and its catalogue row together while evaluating the same policy.
@@ -148,13 +148,25 @@ as_user "$OWNER" \
 check "member deletes exact object" \
   "$(Q -c "select count(*) from storage.objects where bucket_id='content-media' and name='$KEY'")" "0"
 check "release after object removal" \
-  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT')")" "t"
+  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT','$KEY')")" "t"
 check "release retry is idempotently true" \
-  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT')")" "t"
+  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT','$KEY')")" "t"
 check "released row state" \
   "$(Q -c "select media_status from public.content where id='$CONTENT'")" "external_only"
 check "released row clears key" \
   "$(Q -c "select count(storage_key) from public.content where id='$CONTENT'")" "0"
+
+# ABA fencing: after A is released and B is reserved, a delayed release(A)
+# must not clear B even though neither object exists yet.
+KEY_B="$(as_user "$OWNER" "select public.reserve_content_media('$WS','$CONTENT','mov')")"
+check "new reservation differs from old generation" "$([[ "$KEY_B" != "$KEY" ]] && printf t || printf f)" "t"
+check "stale release cannot clear newer reservation" \
+  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT','$KEY')")" "f"
+check "new reservation survives stale release" \
+  "$(Q -c "select storage_key from public.content where id='$CONTENT'")" "$KEY_B"
+check "new reservation can be released" \
+  "$(as_user "$OWNER" "select public.release_content_media('$WS','$CONTENT','$KEY_B')")" "t"
+
 as_user "$OWNER" "delete from public.content where id='$CONTENT' and workspace_id='$WS'" >/dev/null
 check "content delete after cleanup" \
   "$(Q -c "select count(*) from public.content where id='$CONTENT'")" "0"

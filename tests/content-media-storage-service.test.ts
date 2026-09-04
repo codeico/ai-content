@@ -14,13 +14,9 @@ const CONTENT_ID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const PATH = `${WORKSPACE_ID}/${CONTENT_ID}/object.mp4`;
 
 describe('createContentMediaUploadTicket', () => {
-  it('reserves the path then creates a non-upsert signed upload ticket', async () => {
+  it('reserves an exact path without minting a long-lived upload capability', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: PATH, error: null });
-    const createSignedUploadUrl = vi.fn().mockResolvedValue({
-      data: { path: PATH, token: 'signed-upload-token', signedUrl: 'https://not-returned.example' },
-      error: null,
-    });
-    const from = vi.fn().mockReturnValue({ createSignedUploadUrl });
+    const from = vi.fn();
     const client = { rpc, storage: { from } } as unknown as SupabaseClient<Database>;
 
     const ticket = await createContentMediaUploadTicket(client, WORKSPACE_ID, CONTENT_ID, 'mp4');
@@ -30,14 +26,9 @@ describe('createContentMediaUploadTicket', () => {
       target_content_id: CONTENT_ID,
       file_extension: 'mp4',
     });
-    expect(from).toHaveBeenCalledWith('content-media');
-    expect(createSignedUploadUrl).toHaveBeenCalledWith(PATH, { upsert: false });
-    expect(ticket).toEqual({
-      bucket: 'content-media',
-      path: PATH,
-      token: 'signed-upload-token',
-    });
-    expect(ticket).not.toHaveProperty('signedUrl');
+    expect(from).not.toHaveBeenCalled();
+    expect(ticket).toEqual({ bucket: 'content-media', path: PATH });
+    expect(ticket).not.toHaveProperty('token');
   });
 });
 
@@ -104,6 +95,7 @@ describe('removeContentMedia', () => {
     expect(rpc).toHaveBeenCalledWith('release_content_media', {
       target_workspace_id: WORKSPACE_ID,
       target_content_id: CONTENT_ID,
+      expected_storage_key: PATH,
     });
   });
 

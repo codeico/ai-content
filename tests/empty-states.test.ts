@@ -94,9 +94,8 @@ describe('destructive confirmations stay honest when counts are zero', () => {
       'utf8',
     );
 
-    // Branches on captionCount === 0 rather than > 0; either reads fine, the
-    // point is that the sentence is conditional and not fixed.
-    expect(button).toMatch(/captionCount === 0/);
+    // The warning is conditional rather than a fixed sentence.
+    expect(button).toMatch(/captionCount > 0/);
     expect(button).toMatch(/This also deletes/);
   });
 });

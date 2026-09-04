@@ -60,20 +60,19 @@ beforeEach(() => {
   mocks.createContentMediaUploadTicket.mockResolvedValue({
     bucket: 'content-media',
     path: PATH,
-    token: 'upload-token',
   });
   mocks.confirmContentMediaUpload.mockResolvedValue(true);
 });
 
 describe('requestContentMediaUpload', () => {
-  it('validates metadata and returns a signed ticket only after membership and content checks', async () => {
+  it('validates metadata and returns an upload target only after membership and content checks', async () => {
     await expect(
       requestContentMediaUpload(WORKSPACE_ID, CONTENT_ID, {
         name: 'clip.mp4',
         type: 'video/mp4',
         size: 1_000,
       }),
-    ).resolves.toEqual({ bucket: 'content-media', path: PATH, token: 'upload-token' });
+    ).resolves.toEqual({ bucket: 'content-media', path: PATH });
 
     expect(mocks.getWorkspaceForUser).toHaveBeenCalledWith(
       expect.anything(),

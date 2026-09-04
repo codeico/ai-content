@@ -160,7 +160,7 @@ describe('content repository surface', () => {
     );
     const body = source.slice(
       source.indexOf('export async function listAllContentForUser'),
-      source.indexOf('export async function countContentByStatus'),
+      source.indexOf('export async function countStoredMediaForWorkspace'),
     );
 
     expect(body).toContain('.limit(');

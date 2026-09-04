@@ -83,6 +83,8 @@ describe('content media upload UI', () => {
     expect(PAGE).toMatch(/controls/);
     expect(PAGE).toMatch(/preload="metadata"/);
     expect(PAGE).not.toMatch(/src=\{content\.storage_key\}/);
+    expect(PAGE).toContain('previewUnavailable={mediaPreviewUnavailable}');
+    expect(source()).toContain('The stored video is currently unavailable for preview.');
     expect(source()).not.toContain('storageKey');
   });
 });

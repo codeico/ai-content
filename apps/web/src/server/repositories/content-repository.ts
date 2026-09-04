@@ -173,6 +173,23 @@ export async function listAllContentForUser(
   });
 }
 
+export async function countStoredMediaForWorkspace(
+  supabase: ContentClient,
+  workspaceId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('content')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .not('storage_key', 'is', null);
+
+  if (error) {
+    throw new ContentRepositoryError('Unable to count stored media.', error);
+  }
+
+  return count ?? 0;
+}
+
 export async function countContentByStatus(
   supabase: ContentClient,
   workspaceId: string,

@@ -8,7 +8,6 @@ export const CONTENT_MEDIA_BUCKET = 'content-media';
 export interface ContentMediaUploadTicket {
   bucket: typeof CONTENT_MEDIA_BUCKET;
   path: string;
-  token: string;
 }
 
 export class ContentMediaStorageError extends Error {
@@ -22,13 +21,12 @@ export class ContentMediaStorageError extends Error {
 }
 
 /**
- * Reserve an immutable key in Postgres, then ask Storage for a time-limited
- * upload token for exactly that key. The caller's own Supabase client is used
- * for both steps, so workspace RLS and the storage.objects INSERT policy are
- * the authority — never service_role.
+ * Reserve an immutable key in Postgres. The browser uploads to that path with
+ * its existing authenticated Supabase session, so the exact-key INSERT policy
+ * is checked at upload time. No long-lived bearer upload capability is minted.
  *
- * File bytes never cross this server. The browser uploads directly to Storage
- * with `uploadToSignedUrl`; this function returns only bucket, path and token.
+ * File bytes never cross this server; the response contains only the private
+ * bucket identifier and server-generated path.
  */
 export async function createContentMediaUploadTicket(
   supabase: SupabaseClient<Database>,
@@ -46,15 +44,7 @@ export async function createContentMediaUploadTicket(
     throw new ContentMediaStorageError('Unable to reserve content media.', reserveError);
   }
 
-  const { data, error } = await supabase.storage
-    .from(CONTENT_MEDIA_BUCKET)
-    .createSignedUploadUrl(path, { upsert: false });
-
-  if (error || !data) {
-    throw new ContentMediaStorageError('Unable to authorize content media upload.', error);
-  }
-
-  return { bucket: CONTENT_MEDIA_BUCKET, path, token: data.token };
+  return { bucket: CONTENT_MEDIA_BUCKET, path };
 }
 
 /**
@@ -119,6 +109,7 @@ export async function removeContentMedia(
   const { data, error: releaseError } = await supabase.rpc('release_content_media', {
     target_workspace_id: workspaceId,
     target_content_id: contentId,
+    expected_storage_key: path,
   });
 
   if (releaseError) {

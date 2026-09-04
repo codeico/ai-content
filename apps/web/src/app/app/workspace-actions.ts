@@ -13,9 +13,11 @@ import {
   upsertProfileAsOwner,
   WorkspaceProfileRepositoryError,
 } from '@/server/repositories/workspace-profile-repository';
+import { countStoredMediaForWorkspace } from '@/server/repositories/content-repository';
 import {
   createWorkspaceForUser,
   deleteWorkspaceAsOwner,
+  getWorkspaceForUser,
   renameWorkspaceAsOwner,
   WorkspaceRepositoryError,
 } from '@/server/repositories/workspace-repository';
@@ -171,6 +173,18 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
   }
 
   const supabase = await createServerClient();
+  const workspace = await getWorkspaceForUser(supabase, workspaceId, user.id);
+
+  if (!workspace || workspace.role !== 'owner') {
+    redirect(`/app/workspaces/${workspaceId}`);
+  }
+
+  // Fail closed before the cascade reaches content_storage_before_delete.
+  // Bulk object cleanup is deliberately not hidden inside a request-bound
+  // workspace delete; owners remove each stored video explicitly first.
+  if ((await countStoredMediaForWorkspace(supabase, workspaceId)) > 0) {
+    redirect(`/app/workspaces/${workspaceId}`);
+  }
 
   let deleted: boolean;
 
